@@ -1,0 +1,35 @@
+# Resolved on Windows / CPython 3.14.6, 2026-11-10.
+# Re-resolve and verify when the Python version or target platform changes.
+# Install the local project separately with --no-deps after this snapshot.
+amqp==5.4.2
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.16.0
+billiard==4.3.2
+celery==5.7.0
+click==8.5.1
+click-didyoumean==0.3.1
+click-plugins==1.1.1.2
+click-repl==0.4.1
+fastapi==0.162.3
+h11==0.16.0
+idna==3.20
+kombu==5.7.0
+opentelemetry-api==1.45.2
+prompt-toolkit==3.0.53
+psycopg==3.3.8
+psycopg-binary==3.3.8
+pydantic==2.14.3
+pydantic-core==2.50.4
+pydantic-settings==2.16.2
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.4
+six==1.17.0
+starlette==1.10.0
+typing-extensions==4.16.0
+typing-inspection==0.4.5
+tzdata==2026.6
+tzlocal==5.4.5
+uvicorn==0.54.0
+vine==5.1.0
+wcwidth==0.9.4

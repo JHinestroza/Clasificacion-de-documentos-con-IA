@@ -2,25 +2,22 @@
 
 Actualizado: 2026-11-10. Cerrar cada decisión antes de implementar la feature afectada.
 
-## Próxima ronda
+## Decisiones cerradas
 
-1. ¿Se aprueba RabbitMQ + Celery como alternativa inicial? FastAPI, PostgreSQL y
-   Docker Compose también siguen siendo candidatos hasta cerrar la base técnica.
-2. ¿`success` significa procesamiento terminado y después revisión humana, o qué
-   aprobación ocurre antes de la revisión mencionada por el responsable?
-3. ¿`success` y `failed` deben contener los PDF movidos o copias? ¿Dónde se conserva
-   el original y qué política de retención se requiere?
-4. ¿Eliminar un fallido significa retirarlo de la cola, borrar resultados o destruir
-   también el PDF? No habilitar destrucción física por defecto.
+- FastAPI, PostgreSQL, RabbitMQ, Celery y Docker Compose aprobados.
+- Nuevas ramas `feature/nombre-feature` hasta nueva indicación.
+- `success`: procesamiento de metadatos terminado, sin aprobación humana habitual.
+- Los PDF se mueven físicamente a su carpeta de resultado.
+- Eliminar un fallido: retirarlo del reencolamiento conservando PDF e historial,
+  registrando quién, cuándo y por qué. No es una autorización de borrado físico.
+- Docker no está instalado. El responsable difiere esa parte a una feature final.
+- El responsable confirma que las ubicaciones actuales están cifradas; no se ha
+  comprobado técnicamente la cobertura del host ni la de un futuro servidor.
 
-## Antes del entorno seguro y los usuarios
+## Antes de los usuarios y de utilizar datos reales
 
-- Disponibilidad de Docker Desktop/WSL2, recursos del equipo, ubicación de carpetas,
-  volúmenes y respaldos; inventario del servidor final cuando se conozca.
-- Mecanismo de cifrado en reposo, custodia y recuperación de claves. TLS no cifra
-  automáticamente los archivos ni los volúmenes.
-- Nombres del servicio, autoridad de certificados local/institucional, distribución
-  de confianza y renovación; no desactivar la verificación para desarrollo.
+- Custodia, recuperación y renovación de claves y certificados institucionales.
+  F002 solo genera una CA de desarrollo y no instala confianza en Windows.
 - Autenticación del portal, creación segura del primer superusuario y matriz de
   permisos por acción y por fondo/reporte. Sin contraseñas predeterminadas.
 - Acceso solo local o desde otros equipos; API keys para clientes externos si se
@@ -41,5 +38,9 @@ Actualizado: 2026-11-10. Cerrar cada decisión antes de implementar la feature a
 
 ## Antes del primer release
 
+- Instalar Docker y definir el despliegue Linux en la feature final; comprobar
+  recursos, ubicación de volúmenes y cifrado del almacenamiento y respaldos.
+- Ejecutar pruebas reales de PostgreSQL, RabbitMQ, permisos, reinicios y workers
+  Linux; las pruebas locales con dobles no sustituyen esta verificación.
 - Versión, criterios de aceptación, CI y estrategia de integración de `develop`
   hacia `main`. Publicar el tag, release o imágenes requiere autorización remota.
