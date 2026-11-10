@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling==1.29.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "document-platform"
+version = "0.1.0"
+description = "Institutional document processing platform"
+requires-python = ">=3.13,<3.15"
+dependencies = [
+  "fastapi==0.162.3",
+  "pydantic-settings==2.16.2",
+  "psycopg[binary]==3.3.8",
+  "celery==5.7.0",
+  "uvicorn==0.54.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "cryptography==50.0.2",
+  "httpx2==2.16.0",
+  "mypy==2.4.1",
+  "pytest==9.2.0",
+  "ruff==0.17.4",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/document_platform"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["document_platform", "scripts"]
+
+[tool.mypy]
+python_version = "3.13"
+plugins = ["pydantic.mypy"]
+strict = true
+files = ["src/document_platform"]
+ignore_missing_imports = true

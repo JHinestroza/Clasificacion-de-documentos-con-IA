@@ -1,6 +1,6 @@
 # ADR 0001 — Mensajería y ejecución de tareas
 
-- Estado: **Propuesto; pendiente de aprobación**.
+- Estado: **Aprobado: RabbitMQ + Celery**.
 - Fecha: 2026-11-10.
 - Feature de registro: F001.
 
@@ -9,7 +9,8 @@
 Procesaremos PDF desde una carpeta mediante trabajos independientes de la interfaz.
 Se necesitan estados persistentes, recuperación, fallidos y reencolado. El volumen
 potencial supera 10 000 documentos mensuales, pero faltan picos, páginas, tamaños y
-duraciones para dimensionar. El responsable expresa preferencia provisional por A.
+duraciones para dimensionar. El responsable confirmó la alternativa A después de
+revisar la comparación y aprobó también FastAPI, PostgreSQL y Docker Compose.
 
 ## Alternativas
 
@@ -23,13 +24,16 @@ Celery es un framework de tareas que utiliza un transporte; no es un broker que
 reemplace RabbitMQ. Ninguna alternativa elimina la necesidad de idempotencia.
 No se atribuyen cifras de rendimiento sin mediciones.
 
-## Recomendación
+## Decisión
 
-Elegir A si prima construir el flujo documental recuperable. Elegir B si aprender
-Kafka en la V1 justifica el trabajo adicional. Mantener reglas y casos de uso fuera
+Utilizar A para construir el flujo documental recuperable. Kafka queda como
+alternativa futura si los requisitos justifican eventos retenidos y consumidores
+independientes. Mantener reglas y casos de uso fuera
 del adaptador de mensajería; API y workers pueden compartir una base modular.
 
-No existe todavía una decisión aprobada ni una implementación de esta propuesta.
+La selección está aprobada. La provisión del broker y la ejecución de workers Linux
+se difieren a la feature final de Docker por indicación expresa del responsable.
+F002 prepara configuración y adaptadores locales; no acredita un broker operativo.
 
 ## Consecuencias y riesgos de A
 
