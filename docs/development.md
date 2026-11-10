@@ -31,11 +31,11 @@ python -m venv backend/.venv
 .\backend\.venv\Scripts\python.exe scripts/bootstrap_local.py
 ```
 
-Si aún no existe `.env`, copiar `.env.example` como `.env`. Conservar cualquier
-configuración local ya existente; no sobrescribirla al actualizar el proyecto.
+El bootstrap crea o actualiza el `.env` de la raíz con credenciales aleatorias y
+rutas TLS. Conserva la configuración personalizada; `.env.example` documenta los
+nombres y deja las contraseñas vacías, sin valores inseguros predeterminados.
 
 ```powershell
-if (-not (Test-Path -LiteralPath .env)) { Copy-Item -LiteralPath .env.example -Destination .env }
 .\backend\.venv\Scripts\python.exe scripts/bootstrap_local.py --check-only
 ```
 
@@ -48,6 +48,12 @@ Reejecutar el bootstrap comprueba los activos y no los cambia. Un conjunto parci
 expirado o incompatible se rechaza: no borrar ni sustituir archivos para intentar
 repararlo sin planificar la recuperación o rotación. Los secretos generados aún no
 se han provisionado en una base de datos ni en un broker.
+
+Si procede de F002, la migración conserva los valores de `.local/secrets` en
+`APP_DB_ADMIN_PASSWORD`, `APP_DB_PASSWORD` y `APP_BROKER_PASSWORD` dentro de `.env`.
+El backend deja de usar `*_PASSWORD_FILE`. Los archivos anteriores se conservan como
+respaldo local, sin borrado automático. Un conflicto o conjunto parcial se rechaza
+en lugar de cambiar credenciales silenciosamente. `--check-only` no migra ni escribe.
 
 ## Arrancar y consultar HTTPS
 
@@ -83,8 +89,11 @@ aprobar y completar autenticación, autorización y el diseño de exposición.
 
 ## Configuración y secretos
 
-`APP_*` se valida con Pydantic Settings desde el entorno y `.env`. Credenciales
-obligatorias se leen de archivos, no de valores predeterminados ni de JavaScript.
+`APP_*` se valida con Pydantic Settings desde el entorno y `.env`. Las credenciales
+obligatorias `APP_DB_PASSWORD` y `APP_BROKER_PASSWORD` se leen como valores secretos;
+las variables de entorno tienen precedencia. Se leen literalmente, sin expandir
+`${VARIABLE}` dentro de contraseñas. No se admiten valores débiles o variables
+duplicadas ambiguas. No hay fallback a archivos `*_PASSWORD_FILE`.
 `APP_TLS_CA_FILE` es obligatorio; PostgreSQL usa `verify-full` y RabbitMQ verifica
 CA y nombre de servidor. No se ofrece una bandera para desactivar estas comprobaciones.
 
@@ -93,7 +102,9 @@ privada de la API. Celery acepta únicamente JSON; resultados, eventos y control
 remoto están deshabilitados en esta base. No iniciar un worker Celery en Windows:
 su ejecución soportada se comprobará en Linux en la feature final.
 
-Los secretos y claves están en `.local/`, fuera de Git. Los permisos POSIX se
+Los secretos operativos están en `.env`; los certificados y claves TLS están en
+`.local/`, ambos fuera de Git. No imprimirlos con comandos de diagnóstico ni
+incorporar valores reales a `.env.example`. Los permisos POSIX se
 restringen al crear archivos; esos permisos no prueban las ACL ni el cifrado de
 Windows. El responsable declara cifrado en las ubicaciones actuales. Verificar
 volúmenes, respaldos, custodia de CA y servidor antes de procesar datos reales.

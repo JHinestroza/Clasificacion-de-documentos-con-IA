@@ -26,8 +26,9 @@ pruebas de TLS. No instala software de sistema ni cambia el almacén de confianz
   verifican CA y nombre; no hay fallback a HTTP ni modo de aceptar cualquier CA.
 - PostgreSQL usa `verify-full`; RabbitMQ requiere CA y verificación del servidor.
   Celery acepta JSON, sin resultados ni control remoto en esta feature.
-- La CA de desarrollo y los secretos se generan en `.local/`, fuera de Git. La CA
-  privada no se distribuye a clientes ni se instala en Windows. El bootstrap no
+- La CA de desarrollo y sus claves se generan en `.local/`, fuera de Git. Desde
+  F002A, las credenciales operativas se guardan en `.env` por instrucción expresa.
+  La CA privada no se distribuye a clientes ni se instala en Windows. El bootstrap no
   sustituye una política institucional de certificados o de rotación.
 - El responsable declara cifrado en las ubicaciones actuales. No se ha auditado el
   host. Los volúmenes, respaldos y servidor futuro necesitan comprobación antes de

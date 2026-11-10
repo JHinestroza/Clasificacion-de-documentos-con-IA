@@ -1,13 +1,60 @@
 """Validated configuration shared by the API and worker entry points."""
 
+import logging
 import re
 import ssl
+from collections.abc import Mapping
 from ipaddress import ip_address
 from pathlib import Path
-from typing import Self
+from typing import Any, Self
 
-from pydantic import Field, FilePath, PrivateAttr, SecretStr, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from dotenv.parser import parse_stream
+from pydantic import (
+    Field,
+    FilePath,
+    ModelWrapValidatorHandler,
+    SecretStr,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
+from pydantic_core import InitErrorDetails
+from pydantic_settings import (
+    BaseSettings,
+    DotEnvSettingsSource,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+    SettingsError,
+)
+from pydantic_settings.sources.utils import parse_env_vars
+
+
+class LiteralDotEnvSettingsSource(DotEnvSettingsSource):
+    """Read dotenv credentials literally, rejecting ambiguous application entries."""
+
+    @staticmethod
+    def _static_read_env_file(
+        file_path: Path,
+        *,
+        encoding: str | None = None,
+        case_sensitive: bool = False,
+        ignore_empty: bool = False,
+        parse_none_str: str | None = None,
+    ) -> Mapping[str, str | None]:
+        values: dict[str, str | None] = {}
+        seen: set[str] = set()
+        with file_path.open(encoding=encoding or "utf-8") as stream:
+            for binding in parse_stream(stream):
+                if binding.error:
+                    raise SettingsError("Dotenv contains an invalid statement")
+                if binding.key is None:
+                    continue
+                normalized = binding.key.casefold()
+                if normalized.startswith("app_") and normalized in seen:
+                    raise SettingsError("Dotenv contains a duplicate application setting")
+                seen.add(normalized)
+                values[binding.key] = binding.value
+        return parse_env_vars(values, case_sensitive, ignore_empty, parse_none_str)
 
 
 class Settings(BaseSettings):
@@ -25,13 +72,13 @@ class Settings(BaseSettings):
     db_port: int = Field(default=5432, ge=1, le=65535)
     db_name: str = Field(default="document_platform", min_length=1)
     db_user: str = Field(default="document_app", min_length=1)
-    db_password_file: FilePath
+    db_password: SecretStr = Field(repr=False, exclude=True)
 
     broker_host: str = Field(default="rabbitmq", min_length=1)
     broker_port: int = Field(default=5671, ge=1, le=65535)
     broker_user: str = Field(default="document_app", min_length=1)
     broker_vhost: str = Field(default="document_platform", min_length=1)
-    broker_password_file: FilePath
+    broker_password: SecretStr = Field(repr=False, exclude=True)
     broker_task_queue: str = Field(
         default="document_platform.processing", pattern=r"^document_platform\.[a-z0-9_.-]+$"
     )
@@ -47,8 +94,50 @@ class Settings(BaseSettings):
     dependency_timeout_seconds: int = Field(default=3, ge=2, le=10)
     log_level: str = Field(default="INFO", pattern=r"^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")
 
-    _db_password: SecretStr = PrivateAttr()
-    _broker_password: SecretStr = PrivateAttr()
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """Preserve environment precedence while avoiding dotenv interpolation."""
+        if not isinstance(dotenv_settings, DotEnvSettingsSource):
+            raise SettingsError("Unsupported dotenv settings source")
+        literal_dotenv = LiteralDotEnvSettingsSource(
+            settings_cls,
+            env_file=dotenv_settings.env_file,
+            env_file_encoding=dotenv_settings.env_file_encoding,
+            dotenv_filtering=dotenv_settings.dotenv_filtering,
+            case_sensitive=dotenv_settings.case_sensitive,
+            env_prefix=dotenv_settings.env_prefix,
+            env_prefix_target=dotenv_settings.env_prefix_target,
+            env_nested_delimiter=dotenv_settings.env_nested_delimiter,
+            env_nested_max_split=dotenv_settings.env_nested_max_split,
+            env_ignore_empty=dotenv_settings.env_ignore_empty,
+            env_parse_none_str=dotenv_settings.env_parse_none_str,
+            env_parse_enums=dotenv_settings.env_parse_enums,
+            env_file_depth=dotenv_settings.env_file_depth,
+        )
+        return init_settings, env_settings, literal_dotenv
+
+    @classmethod
+    def _settings_log_debug(cls, states: dict[str, dict[str, Any]]) -> None:
+        """Keep Pydantic source debugging from logging raw credential values."""
+        logging.getLogger(__name__).debug("settings_sources_processed count=%s", len(states))
+
+    @field_validator("db_password", "broker_password")
+    @classmethod
+    def validate_secret(cls, value: SecretStr) -> SecretStr:
+        """Require explicit nonblank single-line credentials without echoing them."""
+        raw = value.get_secret_value()
+        if len(raw) < 32 or not raw.strip() or any(character in raw for character in "\r\n\0"):
+            raise ValueError(
+                "Credentials must contain one nonblank value of at least 32 characters"
+            )
+        return value
 
     @field_validator("db_host", "broker_host", "api_host")
     @classmethod
@@ -66,31 +155,30 @@ class Settings(BaseSettings):
         return value
 
     @model_validator(mode="after")
-    def load_secrets(self) -> Self:
-        self._db_password = _read_secret(self.db_password_file)
-        self._broker_password = _read_secret(self.broker_password_file)
+    def validate_ca(self) -> Self:
         try:
             ssl.create_default_context(cafile=str(self.tls_ca_file))
         except (OSError, ssl.SSLError):
             raise ValueError("Configured TLS CA file is invalid") from None
         return self
 
-    @property
-    def db_password(self) -> SecretStr:
-        """Return the database secret with a redacted representation."""
-        return self._db_password
-
-    @property
-    def broker_password(self) -> SecretStr:
-        """Return the broker secret with a redacted representation."""
-        return self._broker_password
-
-
-def _read_secret(path: Path) -> SecretStr:
-    try:
-        value = path.read_text(encoding="utf-8").rstrip("\r\n")
-    except (OSError, UnicodeError):
-        raise ValueError("Configured secret file cannot be read") from None
-    if len(value) < 32 or any(character in value for character in "\r\n\0"):
-        raise ValueError("Secret files must contain one value of at least 32 characters")
-    return SecretStr(value)
+    @model_validator(mode="wrap")
+    @classmethod
+    def redact_validation_inputs(cls, value: Any, handler: ModelWrapValidatorHandler[Self]) -> Self:
+        """Wrap field and model validation so serialized errors cannot expose input."""
+        try:
+            return handler(value)
+        except ValidationError as exc:
+            errors: list[InitErrorDetails] = []
+            for error in exc.errors(include_input=False, include_url=False):
+                detail: InitErrorDetails = {
+                    "type": error["type"],
+                    "loc": error["loc"],
+                    "input": None,
+                }
+                if "ctx" in error:
+                    detail["ctx"] = error["ctx"]
+                errors.append(detail)
+            raise ValidationError.from_exception_data(
+                cls.__name__, errors, hide_input=True
+            ) from None
