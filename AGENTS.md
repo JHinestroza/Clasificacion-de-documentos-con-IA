@@ -38,12 +38,17 @@ independent microservices by default.
 - All application network connections require verified TLS, including Docker
   internal links. Do not disable certificate or hostname verification.
 - Keep keys, secrets and runtime data outside Git and image build contexts.
+  Operational passwords and future application secrets belong in the ignored
+  root `.env`, as explicitly requested by the user. Keep TLS private keys as
+  protected files referenced by path; never embed real values in `.env.example`.
   Never log secrets, extracted text, prompts containing documents or raw errors
   that may expose connection strings.
 - Disk/volume/backup encryption is required before real sensitive data; TLS and
   filesystem permissions do not prove encryption at rest.
 - Enforce permissions in the backend, by action and authorized resource scope.
   The application's superuser is not a database/host administrator.
+  Local user accounts are approved; the detailed F003 schema/session design is
+  proposed in its feature document and requires approval before implementation.
 - Files physically move from input/processing to success/failed, using a recoverable
   design that preserves content and history. Movement is not implemented in F002.
 - `success` means metadata processing completed, without routine human approval.

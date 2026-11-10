@@ -25,6 +25,8 @@ acordados. Las publicaciones remotas requieren autorización expresa.
 - [Preguntas y decisiones pendientes](docs/open-questions.md).
 - [F001: acuerdos de trabajo](docs/features/F001-project-agreements.md).
 - [F002: base backend segura](docs/features/F002-secure-foundation.md).
+- [F002A: secretos en .env](docs/features/F002A-secrets-env.md).
+- [Propuesta F003: cuentas locales y permisos](docs/features/F003-local-accounts-proposal.md).
 - [Desarrollo y verificación local](docs/development.md).
 - [Arquitectura y patrones actuales](docs/architecture.md).
 - [ADR aprobado: mensajería](docs/decisions/0001-messaging.md).
@@ -42,8 +44,9 @@ no sustituye TLS. El responsable confirma cifrado en las ubicaciones actuales; l
 cobertura del despliegue y respaldos deberá comprobarse antes de usar datos reales.
 
 La base local usa una CA privada de desarrollo sin instalarla en Windows. Los
-certificados y credenciales se generan en `.local/`, ignorado por Git. No hay
-contraseñas predeterminadas. Consulte la guía de desarrollo para arrancar HTTPS.
+certificados y claves TLS se generan en `.local/`; las credenciales operativas se
+guardan en el `.env` de la raíz. Ambos están ignorados por Git. No hay contraseñas
+predeterminadas. Consulte la guía de desarrollo para arrancar HTTPS.
 
 No incorporar documentos institucionales reales, credenciales, claves privadas ni
 volcados de base de datos al repositorio. Las pruebas utilizarán datos sintéticos.

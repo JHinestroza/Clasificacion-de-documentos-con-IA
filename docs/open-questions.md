@@ -13,13 +13,17 @@ Actualizado: 2026-11-10. Cerrar cada decisión antes de implementar la feature a
 - Docker no está instalado. El responsable difiere esa parte a una feature final.
 - El responsable confirma que las ubicaciones actuales están cifradas; no se ha
   comprobado técnicamente la cobertura del host ni la de un futuro servidor.
+- Los secretos operativos se guardan en `.env`, excluido del repositorio.
+- Las cuentas serán locales y administradas por el superusuario; no se integrará
+  inicio de sesión institucional en F003.
 
 ## Antes de los usuarios y de utilizar datos reales
 
 - Custodia, recuperación y renovación de claves y certificados institucionales.
   F002 solo genera una CA de desarrollo y no instala confianza en Windows.
-- Autenticación del portal, creación segura del primer superusuario y matriz de
-  permisos por acción y por fondo/reporte. Sin contraseñas predeterminadas.
+- Aprobar la propuesta F003: sesiones revocables, esquema/migraciones, creación
+  segura del primer superusuario y matriz de permisos. El alcance por fondo/reporte
+  debe concretarse antes de exponer esos recursos. Sin contraseñas predeterminadas.
 - Acceso solo local o desde otros equipos; API keys para clientes externos si se
   habilita también una API de carga.
 

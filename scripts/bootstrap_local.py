@@ -1,4 +1,4 @@
-"""Generate or verify the private TLS assets for the synthetic local environment.
+"""Prepare development TLS files and credentials in a private dotenv file.
 
 This creates a development CA without installing it in the operating system trust
 store. Filesystem permissions do not establish encryption at rest or Windows ACLs.
@@ -10,10 +10,11 @@ from __future__ import annotations
 import argparse
 import ipaddress
 import os
-import re
 import secrets
 import sys
+import tempfile
 from datetime import UTC, datetime, timedelta
+from io import StringIO
 from pathlib import Path
 
 from cryptography import x509
@@ -21,6 +22,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
+from dotenv.parser import Binding, parse_stream
 
 DEFAULT_OUTPUT = Path(__file__).resolve().parents[1] / ".local"
 SERVICES = {
@@ -28,12 +30,20 @@ SERVICES = {
     "postgres": ("postgres",),
     "rabbitmq": ("rabbitmq",),
 }
-SECRET_NAMES = ("db_admin_password", "db_app_password", "broker_app_password")
+ENV_SECRETS = {
+    "APP_DB_ADMIN_PASSWORD": "db_admin_password",
+    "APP_DB_PASSWORD": "db_app_password",
+    "APP_BROKER_PASSWORD": "broker_app_password",
+}
+LEGACY_REFERENCES = {
+    "APP_DB_ADMIN_PASSWORD_FILE": "db_admin_password",
+    "APP_DB_PASSWORD_FILE": "db_app_password",
+    "APP_BROKER_PASSWORD_FILE": "broker_app_password",
+}
 ASSET_PATHS = (
     Path("certs/ca.crt"),
     Path("certs/ca.key"),
     *(Path(f"certs/{service}.{suffix}") for service in SERVICES for suffix in ("crt", "key")),
-    *(Path("secrets") / name for name in SECRET_NAMES),
 )
 
 
@@ -155,20 +165,12 @@ def _validate_assets(assets: dict[Path, bytes], now: datetime) -> None:
             eku = certificate.extensions.get_extension_for_class(x509.ExtendedKeyUsage).value
             if set(eku) != {ExtendedKeyUsageOID.SERVER_AUTH}:
                 raise ValueError("invalid server usage")
-        for name in SECRET_NAMES:
-            value = assets[Path("secrets") / name]
-            if not re.fullmatch(rb"[A-Za-z0-9_-]{64}\n", value):
-                raise ValueError("invalid generated credential")
-        if len({assets[Path("secrets") / name] for name in SECRET_NAMES}) != len(SECRET_NAMES):
-            raise ValueError("credentials must be distinct")
     except (ValueError, TypeError, KeyError, x509.ExtensionNotFound, InvalidSignature) as exc:
-        raise BootstrapError(
-            "Local certificate or credential set is invalid; no files were changed."
-        ) from exc
+        raise BootstrapError("Local certificate set is invalid; no files were changed.") from exc
 
 
 def _read_assets(output_dir: Path) -> dict[Path, bytes]:
-    for directory in (output_dir, output_dir / "certs", output_dir / "secrets"):
+    for directory in (output_dir, output_dir / "certs"):
         if directory.is_symlink() or not directory.is_dir():
             raise BootstrapError("Local asset directories are incomplete or symbolic links.")
     assets: dict[Path, bytes] = {}
@@ -182,53 +184,263 @@ def _read_assets(output_dir: Path) -> dict[Path, bytes]:
     return assets
 
 
-def bootstrap(output_dir: Path = DEFAULT_OUTPUT, *, check_only: bool = False) -> bool:
-    """Create assets once, or validate them without mutation; return whether created.
+def _parse_environment(content: str) -> tuple[list[Binding], dict[str, str | None]]:
+    bindings = list(parse_stream(StringIO(content)))
+    values: dict[str, str | None] = {}
+    for binding in bindings:
+        if binding.error:
+            raise BootstrapError("The environment file has invalid syntax; no files were changed.")
+        if binding.key is not None:
+            normalized = binding.key.upper()
+            if normalized in values:
+                raise BootstrapError(
+                    "The environment file has duplicate keys; no files were changed."
+                )
+            values[normalized] = binding.value
+    return bindings, values
 
-    A partial set is deliberately not repaired because doing so could rotate a
-    credential while a database or broker still uses its previous value.
+
+def _validate_credentials(values: dict[str, str]) -> None:
+    if set(values) != set(ENV_SECRETS) or any(
+        len(value) < 32 or not value.strip() or any(char in value for char in "\r\n\0")
+        for value in values.values()
+    ):
+        raise BootstrapError(
+            "Environment credentials are missing or invalid; no files were changed."
+        )
+    if len(set(values.values())) != len(ENV_SECRETS):
+        raise BootstrapError("Environment credentials must be distinct; no files were changed.")
+
+
+def _legacy_credentials(output_dir: Path) -> dict[str, str] | None:
+    directory = output_dir / "secrets"
+    if directory.is_symlink() or (directory.exists() and not directory.is_dir()):
+        raise BootstrapError("Legacy credentials are unsafe to read; no files were changed.")
+    if not directory.exists():
+        return None
+    values: dict[str, str] = {}
+    for name, filename in ENV_SECRETS.items():
+        path = directory / filename
+        if path.is_symlink() or not path.is_file():
+            raise BootstrapError("Legacy credential set is incomplete; no files were changed.")
+        try:
+            values[name] = path.read_text(encoding="utf-8").rstrip("\r\n")
+        except UnicodeError:
+            raise BootstrapError(
+                "Legacy credentials cannot be read; no files were changed."
+            ) from None
+    _validate_credentials(values)
+    return values
+
+
+def _inline_comment(original: str) -> str:
+    """Preserve a trailing dotenv comment when retiring an assignment."""
+    quote: str | None = None
+    escaped = False
+    for index, character in enumerate(original):
+        if escaped:
+            escaped = False
+        elif character == "\\" and quote is not None:
+            escaped = True
+        elif character in "'\"":
+            if quote is None:
+                quote = character
+            elif quote == character:
+                quote = None
+        elif character == "#" and quote is None and (index == 0 or original[index - 1].isspace()):
+            return original[index:]
+    return ""
+
+
+def _assignment(name: str, value: str) -> str:
+    escaped = value.replace("\\", "\\\\").replace("'", "\\'")
+    return f"{name}='{escaped}'\n"
+
+
+def _render_environment(
+    bindings: list[Binding], credentials: dict[str, str], output_dir: Path, *, new_file: bool
+) -> str:
+    lines: list[str] = []
+    written: set[str] = set()
+    configured_tls: set[str] = set()
+    tls_paths = {
+        "APP_TLS_CA_FILE": output_dir / "certs/ca.crt",
+        "APP_API_CERT_FILE": output_dir / "certs/api.crt",
+        "APP_API_KEY_FILE": output_dir / "certs/api.key",
+    }
+    for binding in bindings:
+        normalized = binding.key.upper() if binding.key is not None else ""
+        if normalized in tls_paths:
+            if binding.value is None or not binding.value.strip():
+                raise BootstrapError(
+                    "Configured TLS paths must not be empty; no files were changed."
+                )
+            configured_tls.add(normalized)
+        if normalized in LEGACY_REFERENCES:
+            lines.append(_inline_comment(binding.original.string))
+        elif normalized in credentials and not binding.value:
+            lines.append(_assignment(normalized, credentials[normalized]))
+            lines.append(_inline_comment(binding.original.string))
+            written.add(normalized)
+        elif new_file and normalized in tls_paths:
+            lines.append(_assignment(normalized, tls_paths[normalized].as_posix()))
+        else:
+            lines.append(binding.original.string)
+            if normalized in credentials:
+                written.add(normalized)
+    content = "".join(lines)
+    if content and not content.endswith(("\n", "\r")):
+        content += "\n"
+    for name, value in credentials.items():
+        if name not in written:
+            content += _assignment(name, value)
+    for name, path in tls_paths.items():
+        if name not in configured_tls:
+            content += _assignment(name, path.as_posix())
+    return content
+
+
+def _write_environment(path: Path, content: bytes, expected: bytes | None) -> None:
+    """Publish a private file atomically, rejecting a concurrent edit before replace."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, name = tempfile.mkstemp(prefix=".env.", dir=path.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            temporary.chmod(0o600)
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        if path.is_symlink() or (path.exists() and not path.is_file()):
+            raise BootstrapError("Environment file changed during preparation; retry safely.")
+        current = path.read_bytes() if path.exists() else None
+        if current != expected:
+            raise BootstrapError(
+                "Environment file changed during preparation; no replacement made."
+            )
+        temporary.replace(path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def bootstrap(
+    output_dir: Path = DEFAULT_OUTPUT,
+    *,
+    env_file: Path | None = None,
+    check_only: bool = False,
+) -> bool:
+    """Prepare TLS plus literal dotenv credentials, preserving existing identities.
+
+    Legacy secret files are copied into dotenv after validation and retained as
+    ignored backups. Existing certificates or populated credentials never rotate.
+    A partial credential set or a conflict is rejected before any file changes.
     """
     output_dir = Path(output_dir).absolute()
+    env_file = Path(env_file).absolute() if env_file is not None else output_dir.parent / ".env"
+    name = env_file.name
+    if (
+        not (name == ".env" or name.startswith(".env."))
+        or name.rstrip(" .").casefold() == ".env.example"
+        or name != name.rstrip(" .")
+    ):
+        raise BootstrapError("Environment destination must be a private .env file, not a template.")
     now = datetime.now(UTC)
-    if output_dir.is_symlink():
-        raise BootstrapError("The local asset directory must not be a symbolic link.")
-    if output_dir.exists():
-        _validate_assets(_read_assets(output_dir), now)
-        return False
-    if check_only:
+    if output_dir.is_symlink() or env_file.is_symlink():
+        raise BootstrapError("Local asset paths must not be symbolic links.")
+    exists = output_dir.exists()
+    if exists:
+        assets = _read_assets(output_dir)
+        _validate_assets(assets, now)
+    elif check_only:
         raise BootstrapError("Local assets do not exist; run bootstrap first.")
+    else:
+        assets = _make_certificates(now)
+        _validate_assets(assets, now)
 
-    assets = _make_certificates(now)
-    for name in SECRET_NAMES:
-        assets[Path("secrets") / name] = (secrets.token_urlsafe(48) + "\n").encode("ascii")
-    _validate_assets(assets, now)
+    expected = env_file.read_bytes() if env_file.exists() else None
+    try:
+        if expected is not None:
+            source = expected.decode("utf-8")
+        else:
+            template = Path(__file__).resolve().parents[1] / ".env.example"
+            source = template.read_text(encoding="utf-8")
+        bindings, values = _parse_environment(source)
+    except UnicodeError:
+        raise BootstrapError(
+            "The environment file must use UTF-8; no files were changed."
+        ) from None
 
-    # Exclusive directory and file creation prevents accidental identity rotation.
-    # An interrupted write leaves a partial set that subsequent runs reject.
-    output_dir.parent.mkdir(parents=True, exist_ok=True)
-    output_dir.mkdir(mode=0o700)
-    (output_dir / "certs").mkdir(mode=0o700)
-    (output_dir / "secrets").mkdir(mode=0o700)
-    for relative, value in assets.items():
-        target = output_dir / relative
-        with target.open("xb") as file:
-            file.write(value)
-            file.flush()
-            os.fsync(file.fileno())
-        target.chmod(0o644 if relative.suffix == ".crt" else 0o600)
-    _validate_assets(_read_assets(output_dir), now)
-    return True
+    legacy = _legacy_credentials(output_dir)
+    for reference, filename in LEGACY_REFERENCES.items():
+        value = values.get(reference)
+        if (
+            value is not None
+            and (env_file.parent / value).absolute()
+            != (output_dir / "secrets" / filename).absolute()
+        ):
+            raise BootstrapError("Legacy credential paths differ; manual migration is required.")
+    credentials = {
+        name: value
+        for name in ENV_SECRETS
+        if (value := values.get(name)) is not None and value != ""
+    }
+    if credentials:
+        _validate_credentials(credentials)
+        if legacy is not None and credentials != legacy:
+            raise BootstrapError(
+                "Environment and legacy credentials conflict; no files were changed."
+            )
+    elif legacy is not None:
+        credentials = legacy
+    elif exists or any(reference in values for reference in LEGACY_REFERENCES):
+        raise BootstrapError("Environment credentials are missing; no files were changed.")
+    else:
+        credentials = {name: secrets.token_urlsafe(48) for name in ENV_SECRETS}
+    _validate_credentials(credentials)
+
+    content = _render_environment(bindings, credentials, output_dir, new_file=expected is None)
+    _, rendered = _parse_environment(content)
+    if any(rendered.get(name) != value for name, value in credentials.items()):
+        raise BootstrapError("Environment credentials could not be represented safely.")
+    needs_env = expected != content.encode("utf-8")
+    if check_only:
+        if any(values.get(name) != value for name, value in credentials.items()):
+            raise BootstrapError("Credentials require environment migration; run bootstrap first.")
+        if any(
+            not values.get(name)
+            for name in ("APP_TLS_CA_FILE", "APP_API_CERT_FILE", "APP_API_KEY_FILE")
+        ):
+            raise BootstrapError("TLS paths require environment preparation; run bootstrap first.")
+        return False
+
+    if not exists:
+        output_dir.parent.mkdir(parents=True, exist_ok=True)
+        output_dir.mkdir(mode=0o700)
+        (output_dir / "certs").mkdir(mode=0o700)
+        for relative, asset_bytes in assets.items():
+            target = output_dir / relative
+            with target.open("xb") as handle:
+                handle.write(asset_bytes)
+                handle.flush()
+                os.fsync(handle.fileno())
+            target.chmod(0o644 if relative.suffix == ".crt" else 0o600)
+        _validate_assets(_read_assets(output_dir), now)
+    if needs_env:
+        _write_environment(env_file, content.encode("utf-8"), expected)
+    return not exists or needs_env
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--env-file", type=Path, help="Defaults to the parent of output-dir/.env.")
     parser.add_argument(
         "--check-only", action="store_true", help="Validate; do not create or change files."
     )
     args = parser.parse_args()
     try:
-        created = bootstrap(args.output_dir, check_only=args.check_only)
+        created = bootstrap(args.output_dir, env_file=args.env_file, check_only=args.check_only)
     except BootstrapError as exc:
         print(f"Bootstrap refused: {exc}", file=sys.stderr)
         return 1
@@ -236,7 +448,7 @@ def main() -> int:
         print("Bootstrap refused: local assets could not be accessed safely.", file=sys.stderr)
         return 1
     print(
-        "Local development assets created."
+        "Local development TLS assets and environment prepared."
         if created
         else "Local development assets verified; unchanged."
     )

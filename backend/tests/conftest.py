@@ -1,5 +1,6 @@
 """Synthetic TLS material and isolated deployment settings."""
 
+import os
 from datetime import UTC, datetime, timedelta
 from ipaddress import ip_address
 from pathlib import Path
@@ -15,7 +16,10 @@ from document_platform.config import Settings
 
 
 @pytest.fixture
-def settings_values(tmp_path: Path) -> dict[str, Any]:
+def settings_values(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+    for name in tuple(os.environ):
+        if name.startswith("APP_"):
+            monkeypatch.delenv(name)
     now = datetime.now(UTC)
     ca_key = ec.generate_private_key(ec.SECP256R1())
     ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Synthetic test CA")])
@@ -80,12 +84,9 @@ def settings_values(tmp_path: Path) -> dict[str, Any]:
             serialization.NoEncryption(),
         )
     )
-    db_secret, broker_secret = (tmp_path / name for name in ("db_password", "broker_password"))
-    db_secret.write_text("synthetic-database-secret-" + "d" * 32, encoding="utf-8")
-    broker_secret.write_text("synthetic-broker-secret-" + "b" * 32, encoding="utf-8")
     return {
-        "db_password_file": db_secret,
-        "broker_password_file": broker_secret,
+        "db_password": "synthetic-database-secret-" + "d" * 32,
+        "broker_password": "synthetic-broker-secret-" + "b" * 32,
         "tls_ca_file": ca_path,
         "api_cert_file": cert_path,
         "api_key_file": key_path,

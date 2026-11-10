@@ -27,7 +27,7 @@ no se simula un backend operativo para presentar un estado saludable.
 | --- | --- |
 | `__main__.py` | Validar arranque y construir el servidor Uvicorn con contexto TLS obligatorio. |
 | `main.py` | Construir FastAPI e inyectar el servicio de disponibilidad. |
-| `config.py` | Cargar variables, validar rutas/hosts/CA y leer credenciales con representación ocultada. |
+| `config.py` | Cargar variables y secretos de `.env`, validar rutas/hosts/CA y ocultar credenciales en representaciones y errores. |
 | `api/` | Respuestas HTTP mínimas y rechazo de solicitudes sin esquema HTTPS. |
 | `application/readiness.py` | Combinar comprobaciones y convertir fallos en estados sin exponer excepciones. |
 | `infrastructure/` | Conexiones PostgreSQL/RabbitMQ y configuración TLS/Celery. |
@@ -70,7 +70,8 @@ La API solo escucha inicialmente en loopback y no acepta cabeceras proxy para
 declarar HTTPS. El cliente comprueba CA y nombre; los adaptadores también verifican
 el servidor de su dependencia. La clave privada de la API no es requisito del worker.
 
-Los secretos y la CA privada quedan fuera de Git, dentro del almacenamiento que el
+Los secretos operativos se leen del `.env` ignorado por Git; los certificados y
+claves TLS permanecen en archivos protegidos bajo `.local/`. Todo queda dentro del almacenamiento que el
 responsable declara cifrado. No se ha auditado el host. La PKI institucional,
 respaldos y renovación necesitan diseño antes de datos reales.
 
