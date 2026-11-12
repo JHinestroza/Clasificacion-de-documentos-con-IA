@@ -47,8 +47,8 @@ independent microservices by default.
   filesystem permissions do not prove encryption at rest.
 - Enforce permissions in the backend, by action and authorized resource scope.
   The application's superuser is not a database/host administrator.
-  F003 local accounts, sessions, schema and audit design are approved by the user;
-  implementation remains pending. Do not request that approval again.
+  F003 local accounts, sessions, schema and audit are implemented and verified
+  against local PostgreSQL TLS. Do not request their approval again.
 - RabbitMQ local TLS integration and synthetic queue tests are approved before
   Docker. Do not claim the current broker probe is a Windows Celery worker.
 - Create Windows files under the real operator account (Usuario), never Codex

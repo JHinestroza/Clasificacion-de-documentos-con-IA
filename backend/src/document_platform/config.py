@@ -94,6 +94,40 @@ class Settings(BaseSettings):
     dependency_timeout_seconds: int = Field(default=3, ge=2, le=10)
     log_level: str = Field(default="INFO", pattern=r"^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")
 
+    auth_allowed_origins: tuple[str, ...] = ("https://localhost:8443", "https://127.0.0.1:8443")
+    auth_idle_seconds: int = Field(default=1800, ge=60, le=86400)
+    auth_absolute_seconds: int = Field(default=28800, ge=600, le=604800)
+    auth_login_window_seconds: int = Field(default=900, ge=60, le=3600)
+    auth_login_max_attempts: int = Field(default=5, ge=1, le=20)
+    auth_hash_concurrency: int = Field(default=2, ge=1, le=4)
+
+    @field_validator("auth_allowed_origins")
+    @classmethod
+    def validate_origins(cls, origins: tuple[str, ...]) -> tuple[str, ...]:
+        from urllib.parse import urlsplit
+
+        if not origins:
+            raise ValueError("At least one HTTPS origin is required")
+        for origin in origins:
+            value = urlsplit(origin)
+            if (
+                value.scheme != "https"
+                or not value.hostname
+                or value.username
+                or value.password
+                or value.path
+                or value.query
+                or value.fragment
+            ):
+                raise ValueError("Origins must be exact HTTPS origins without paths or credentials")
+        return origins
+
+    @model_validator(mode="after")
+    def validate_auth_durations(self) -> Self:
+        if self.auth_idle_seconds > self.auth_absolute_seconds:
+            raise ValueError("Idle session duration cannot exceed absolute duration")
+        return self
+
     @classmethod
     def settings_customise_sources(
         cls,
@@ -182,3 +216,29 @@ class Settings(BaseSettings):
             raise ValidationError.from_exception_data(
                 cls.__name__, errors, hide_input=True
             ) from None
+
+
+class DatabaseAdminSettings(Settings):
+    """Administrative credentials are loaded only by explicit provisioning/migration tools."""
+
+    db_admin_user: str = "postgres"
+    db_admin_password: SecretStr = Field(repr=False, exclude=True)
+
+    @field_validator("db_admin_password")
+    @classmethod
+    def validate_admin_secret(cls, value: SecretStr) -> SecretStr:
+        return cls.validate_secret(value)
+
+
+class BootstrapSettings(Settings):
+    """Explicit portal bootstrap credentials, distinct from PostgreSQL administration."""
+
+    bootstrap_admin_username: str = "admin"
+    bootstrap_admin_password: SecretStr = Field(repr=False, exclude=True)
+
+    @field_validator("bootstrap_admin_password")
+    @classmethod
+    def validate_bootstrap_secret(cls, value: SecretStr) -> SecretStr:
+        if not 16 <= len(value.get_secret_value()) <= 128 or not value.get_secret_value().strip():
+            raise ValueError("Bootstrap password must contain 16 to 128 nonblank characters")
+        return value
