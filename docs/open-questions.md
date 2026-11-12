@@ -29,11 +29,13 @@ Actualizado: 2026-11-12. Cerrar cada decisión antes de implementar la feature a
 
 ## Antes de ingestión, extracción y metadatos
 
-- Dos o tres nombres ficticios de PDF y ubicación exacta del código en el nombre.
+- Nombres de fondos a configurar y cantidad inicial de fondos; los ejemplos de
+  código y el límite de tamaño ya se registraron abajo.
 - Reglas de normalización del código y deduplicación por contenido SHA-256.
-- Tamaños y páginas habituales/máximos; picos de carga y forma de completar la copia
+- Páginas habituales/máximas, picos de carga y forma de completar la copia
   de archivos en la carpeta de entrada.
-- Alcance de iniciar, pausar y detener: por lote, fondo o ejecución completa.
+- Controles por lote confirmados: finalizar la admisión iniciada al pausar/detener;
+  conservar pendientes. El efecto sobre la futura ejecución del worker se diseñará en F005.
 - Política de reintentos, errores transitorios, documentos sin texto y fallos
   permanentes. Diferenciar cancelar un trabajo de detener el servicio.
 - Primeros campos de metadatos, ejemplos sintéticos y esquema de salida esperado.
@@ -55,3 +57,14 @@ El alcance detallado de F003 ya fue aprobado; no volver a consultarlo. RabbitMQ 
 instalado y se autorizó verificarlo por TLS antes de Docker. PostgreSQL 18.7 está
 instalado e integrado por TLS en F003; allí persisten usuarios, sesiones y auditoría.
 Docker, los workers Linux y el despliegue completo siguen diferidos a la feature final.
+
+## Respuestas para F004 y entrega inicial F004A
+
+- Se eligió React o Vue; se adopta React/TypeScript/Vite para la interfaz.
+- Ejemplos: CAB01.pdf y CAB02.pdf; códigos completos CAB01 y CAB02 conservando ceros.
+- Límite por archivo: 100 MB (100 000 000 bytes para la implementación del ingreso).
+- Pausa y detención por lote con finalización de la admisión iniciada.
+- F004A implementa el portal de cuentas/auditoría; no cambia el esquema documental
+  ni permisos del broker. El plan F004 permanece en `feature/ingestion-operacion`.
+- El navegador rechaza la CA de desarrollo. Falta elegir confianza local explícita
+  o certificado institucional antes de completar la prueba visual del portal.

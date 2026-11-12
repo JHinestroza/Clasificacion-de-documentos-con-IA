@@ -3,10 +3,11 @@
 ## Alcance actual
 
 Backend local Windows con HTTPS, cuentas locales, permisos y auditoría PostgreSQL.
-PostgreSQL y RabbitMQ están provisionados con TLS verificado. No hay ingestión,
-procesamiento de PDF ni interfaz visual. Docker y los workers Linux se difieren a
+PostgreSQL y RabbitMQ están provisionados con TLS verificado. F004A añade un portal React de cuentas/auditoría, con confianza de CA del navegador
+pendiente. No hay ingestión ni procesamiento de PDF. Docker y los workers Linux se difieren a
 la feature final por indicación del responsable.
 
+- [Portal React](react-portal.md): compilar, ejecutar por HTTPS y estado de confianza del navegador.
 - [Usuarios, permisos y PostgreSQL local](identity-local.md): arranque, prueba de
   login/logout, aprovisionamiento explícito, contrato HTTP y pruebas reales.
 - [RabbitMQ local](rabbitmq-local.md): cola sintética, permisos y diagnóstico.

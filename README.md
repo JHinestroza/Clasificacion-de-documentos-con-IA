@@ -5,8 +5,9 @@ generar metadatos configurables y conservar trazabilidad del procesamiento y los
 
 El backend local dispone de HTTPS, cuentas locales, permisos y auditoría persistida
 en PostgreSQL con TLS. RabbitMQ está integrado para pruebas sintéticas. La ingestión,
-el procesamiento documental y la interfaz visual siguen pendientes. Docker se ha
-diferido a una feature final.
+el procesamiento documental siguen pendientes. F004A incorpora un portal React
+para cuentas y auditoría; su prueba de navegador espera la confianza de la CA.
+Docker se ha diferido a una feature final.
 
 ## Desarrollo por features
 
@@ -31,6 +32,8 @@ acordados. Las publicaciones remotas requieren autorización expresa.
 - [Publicar y ver mensajes de prueba](docs/rabbitmq-local.md).
 - [F003: cuentas locales, permisos y auditoría](docs/features/F003-local-accounts-proposal.md).
 - [Arrancar y probar usuarios por HTTPS](docs/identity-local.md).
+- [F004A: portal React](docs/features/F004A-react-portal.md).
+- [Compilar y utilizar el portal](docs/react-portal.md).
 - [Contrato OpenAPI](docs/api/F003-openapi.json).
 - [Desarrollo y verificación local](docs/development.md).
 - [Arquitectura y patrones actuales](docs/architecture.md).

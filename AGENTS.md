@@ -8,6 +8,10 @@ Docker Compose with Linux services. Docker installation, container definitions a
 full runtime integration are explicitly deferred to a FINAL feature by the user.
 F002 covers a local backend and verified TLS, not a Linux deployment. The user
 reports storage locations are encrypted; final deployment verification is pending.
+The user approved React or Vue; F004A adopts React/TypeScript/Vite, with compiled
+assets served by the existing FastAPI HTTPS process. Do not introduce an HTTP Vite
+server or expose secrets to frontend builds. Browser CA trust is pending express
+authorization; do not bypass certificate warnings.
 Keep a modular application with separate API and worker processes. Do not build
 independent microservices by default.
 

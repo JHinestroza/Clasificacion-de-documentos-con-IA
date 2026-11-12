@@ -91,6 +91,9 @@ class Settings(BaseSettings):
     api_key_file: FilePath | None = None
     api_host: str = Field(default="127.0.0.1", min_length=1)
     api_port: int = Field(default=8443, ge=1, le=65535)
+    web_dist_dir: Path = Field(
+        default_factory=lambda: Path(__file__).resolve().parents[3] / "frontend" / "dist"
+    )
     dependency_timeout_seconds: int = Field(default=3, ge=2, le=10)
     log_level: str = Field(default="INFO", pattern=r"^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")
 

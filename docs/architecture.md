@@ -5,7 +5,8 @@
 Un paquete Python contiene API, dominio, casos de uso y adaptadores. Se verificó
 Windows con HTTPS, PostgreSQL nativo TLS y RabbitMQ AMQPS. La API y el futuro worker
 son procesos separados; Docker y la ejecución Celery Linux siguen en la feature final.
-No hay procesamiento documental ni interfaz visual todavía.
+F004A añade una interfaz React compilada, servida desde la misma API HTTPS.
+La revisión visual espera la confianza de CA del navegador. No hay procesamiento documental.
 
 ```mermaid
 flowchart LR
@@ -71,3 +72,10 @@ Los resultados documentales futuros usarán historial persistente. Un fallo pued
 dejar artefactos parciales sin publicarlos como metadatos completos. Retirar un
 fallido del reencolamiento conservará PDF, causa, actor e historial; F003 no mueve
 archivos ni implementa esos trabajos.
+
+## Portal React F004A
+
+React/TypeScript/Vite compila en `frontend/dist`. FastAPI sirve únicamente index y
+assets públicos con huella, con CSP del mismo origen. Node no es un runtime del
+servidor y el frontend no contiene secretos ni almacena identificadores de sesión.
+[ADR 0007](decisions/0007-react-portal.md) registra la elección y sus límites.
