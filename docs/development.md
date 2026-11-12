@@ -3,9 +3,9 @@
 ## Alcance actual
 
 F002 es una base backend HTTPS local. No admite documentos, no administra usuarios
-ni ejecuta procesamiento documental. PostgreSQL y RabbitMQ no se instalan aquí.
-Docker, servicios reales y workers Linux se ejecutarán y verificarán en una feature
-final, por indicación del responsable.
+ni ejecuta procesamiento documental. RabbitMQ ya se instaló y se verificó localmente
+por TLS en F002B; PostgreSQL sigue pendiente. Docker y workers Linux se verificarán
+en una feature final, por indicación del responsable.
 
 La API escucha en `127.0.0.1:8443` y solo expone:
 
@@ -114,7 +114,10 @@ volúmenes, respaldos, custodia de CA y servidor antes de procesar datos reales.
 Desde la raíz:
 
 ```powershell
-.\backend\.venv\Scripts\python.exe -m pytest -c backend/pyproject.toml backend/tests tests
+$testParent = Join-Path (Get-Location).Path '.local/test-runs'
+New-Item -ItemType Directory -Path $testParent -Force | Out-Null
+$testRun = Join-Path $testParent ('tests-' + (Get-Date -Format 'yyyyMMdd-HHmmssfff'))
+.\backend\.venv\Scripts\python.exe -m pytest -c backend/pyproject.toml backend/tests tests --basetemp $testRun
 .\backend\.venv\Scripts\python.exe -m ruff check --config backend/pyproject.toml backend scripts tests
 .\backend\.venv\Scripts\python.exe -m ruff format --check --config backend/pyproject.toml backend scripts tests
 .\backend\.venv\Scripts\python.exe -m mypy --config-file backend/pyproject.toml backend/src/document_platform scripts
@@ -139,3 +142,10 @@ dobles no acreditan conectividad con servicios reales.
 
 No existen todavía imágenes publicadas, Compose ni comandos de despliegue. El
 objetivo final de descargar imágenes se concretará al aprobar registro y publicación.
+
+## RabbitMQ instalado localmente
+
+La integración TLS y la cola sintética se explican en [la guía RabbitMQ](rabbitmq-local.md).
+Ejecutar preparadores y pruebas desde la cuenta Windows propia, no desde cuentas
+Codex. Para evitar conflictos con temporales antiguos, seguir allí el ejemplo con
+`--basetemp` único bajo `.local/test-runs`. PostgreSQL continúa pendiente.

@@ -48,3 +48,9 @@ Actualizado: 2026-11-10. Cerrar cada decisión antes de implementar la feature a
   Linux; las pruebas locales con dobles no sustituyen esta verificación.
 - Versión, criterios de aceptación, CI y estrategia de integración de `develop`
   hacia `main`. Publicar el tag, release o imágenes requiere autorización remota.
+
+## Resuelto el 2026-11-12
+
+El alcance detallado de F003 ya fue aprobado; no volver a consultarlo. RabbitMQ está
+instalado y se autorizó verificarlo por TLS antes de Docker. PostgreSQL sigue
+pendiente; no atribuir al broker persistencia de usuarios, sesiones o auditoría.

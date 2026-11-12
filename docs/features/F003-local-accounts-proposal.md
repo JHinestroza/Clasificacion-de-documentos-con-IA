@@ -1,7 +1,7 @@
 # Propuesta F003 — Cuentas locales, permisos y auditoría
 
-- Estado: Cuentas locales confirmadas. Alcance técnico y esquema propuestos;
-  pendientes de aprobación antes de implementar autenticación o migraciones.
+- Estado: Alcance técnico y esquema aprobados por el responsable. Implementación
+  pendiente; la integración RabbitMQ local recibió prioridad el 2026-11-12.
 - Fecha: 2026-11-10.
 - Rama prevista: `feature/usuarios-permisos-auditoria`, desde `develop`.
 
@@ -108,11 +108,11 @@ usuarios, tablas o secretos adicionales mediante esta propuesta.
   en la feature final de Docker, incluida la desactivación concurrente de superusuarios,
   dejando este límite visible en la entrega local.
 
-## Riesgos y aprobación pendiente
+## Riesgos y aprobación registrada
 
-Autorizar esta propuesta incorpora un esquema nuevo, migraciones, Argon2id y
-sesiones revocables. La caducidad inicial y el alcance de la entrega son revisables.
-Si no se aprueba, se conserva el backend actual sin autenticación adicional.
+El responsable aprobó incorporar este esquema, migraciones, Argon2id y sesiones
+revocables. La aprobación persiste y no debe solicitarse de nuevo. La implementación
+sigue pendiente y no se presenta como funcionalidad verificada.
 
 ## Referencias primarias
 
