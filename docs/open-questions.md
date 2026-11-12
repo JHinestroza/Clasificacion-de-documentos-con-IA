@@ -1,6 +1,6 @@
 # Preguntas y decisiones pendientes
 
-Actualizado: 2026-11-10. Cerrar cada decisión antes de implementar la feature afectada.
+Actualizado: 2026-11-12. Cerrar cada decisión antes de implementar la feature afectada.
 
 ## Decisiones cerradas
 
@@ -21,9 +21,9 @@ Actualizado: 2026-11-10. Cerrar cada decisión antes de implementar la feature a
 
 - Custodia, recuperación y renovación de claves y certificados institucionales.
   F002 solo genera una CA de desarrollo y no instala confianza en Windows.
-- Aprobar la propuesta F003: sesiones revocables, esquema/migraciones, creación
-  segura del primer superusuario y matriz de permisos. El alcance por fondo/reporte
-  debe concretarse antes de exponer esos recursos. Sin contraseñas predeterminadas.
+- El alcance por fondo/reporte debe concretarse antes de exponer esos recursos.
+  F003 ya implementa cuentas locales, sesiones revocables, permisos y auditoría.
+  Recuperación de cuentas y políticas de retención necesitan diseño antes de ampliarlas.
 - Acceso solo local o desde otros equipos; API keys para clientes externos si se
   habilita también una API de carga.
 
@@ -44,13 +44,14 @@ Actualizado: 2026-11-10. Cerrar cada decisión antes de implementar la feature a
 
 - Instalar Docker y definir el despliegue Linux en la feature final; comprobar
   recursos, ubicación de volúmenes y cifrado del almacenamiento y respaldos.
-- Ejecutar pruebas reales de PostgreSQL, RabbitMQ, permisos, reinicios y workers
-  Linux; las pruebas locales con dobles no sustituyen esta verificación.
+- Revalidar PostgreSQL, RabbitMQ, permisos, reinicios y workers en el despliegue
+  Linux; las pruebas locales Windows no sustituyen esa verificación.
 - Versión, criterios de aceptación, CI y estrategia de integración de `develop`
   hacia `main`. Publicar el tag, release o imágenes requiere autorización remota.
 
 ## Resuelto el 2026-11-12
 
 El alcance detallado de F003 ya fue aprobado; no volver a consultarlo. RabbitMQ está
-instalado y se autorizó verificarlo por TLS antes de Docker. PostgreSQL sigue
-pendiente; no atribuir al broker persistencia de usuarios, sesiones o auditoría.
+instalado y se autorizó verificarlo por TLS antes de Docker. PostgreSQL 18.7 está
+instalado e integrado por TLS en F003; allí persisten usuarios, sesiones y auditoría.
+Docker, los workers Linux y el despliegue completo siguen diferidos a la feature final.

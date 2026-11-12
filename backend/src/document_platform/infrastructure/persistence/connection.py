@@ -25,3 +25,10 @@ def check_postgres(settings: Settings) -> None:
             raise ConnectionError("Database connection did not use TLS")
         if connection.execute("SELECT 1").fetchone() != (1,):
             raise ConnectionError("Database readiness probe did not succeed")
+        schema = connection.execute(
+            "SELECT to_regclass('identity.users') IS NOT NULL "
+            "AND to_regclass('identity.sessions') IS NOT NULL "
+            "AND to_regclass('identity.audit_logs') IS NOT NULL"
+        ).fetchone()
+        if schema is None or schema[0] is not True:
+            raise ConnectionError("Identity migrations are not ready")

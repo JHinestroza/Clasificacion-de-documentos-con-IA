@@ -2,58 +2,46 @@
 
 ## Alcance actual
 
-F002 es una base backend HTTPS local. No admite documentos, no administra usuarios
-ni ejecuta procesamiento documental. RabbitMQ ya se instaló y se verificó localmente
-por TLS en F002B; PostgreSQL sigue pendiente. Docker y workers Linux se verificarán
-en una feature final, por indicación del responsable.
+Backend local Windows con HTTPS, cuentas locales, permisos y auditoría PostgreSQL.
+PostgreSQL y RabbitMQ están provisionados con TLS verificado. No hay ingestión,
+procesamiento de PDF ni interfaz visual. Docker y los workers Linux se difieren a
+la feature final por indicación del responsable.
 
-La API escucha en `127.0.0.1:8443` y solo expone:
+- [Usuarios, permisos y PostgreSQL local](identity-local.md): arranque, prueba de
+  login/logout, aprovisionamiento explícito, contrato HTTP y pruebas reales.
+- [RabbitMQ local](rabbitmq-local.md): cola sintética, permisos y diagnóstico.
+- [F003](features/F003-local-accounts-proposal.md): alcance y evidencia.
 
-- `GET /api/v1/health`: el proceso responde, independiente de PostgreSQL/RabbitMQ.
-- `GET /api/v1/ready`: consulta ambas dependencias por TLS; responde 503 si no están
-  disponibles. Sin servicios reales, ese 503 es el resultado esperado.
+## Preparar Python y activos locales
 
-La UI de documentación está deshabilitada en esta base. No se ha implementado
-autenticación; solo se permite su uso local con datos sintéticos y endpoints de salud.
-
-## Preparar el entorno en Windows
-
-Ejecutar PowerShell desde la raíz del repositorio. Se requiere Python 3.13 o 3.14.
-Las dependencias directas y herramientas están fijadas en `backend/pyproject.toml`.
-Los snapshots `backend/requirements.lock` y `backend/requirements-dev.lock` fijan
-también las transitivas resueltas en Windows/CPython 3.14.6. Revalidarlos al cambiar
-de plataforma o versión de Python; no son una certificación del futuro Linux.
+Ejecutar PowerShell desde la raíz del repositorio con la cuenta propia `Usuario`.
+Se requiere Python 3.13 o 3.14. No crear archivos con cuentas sandbox Codex.
+Las dependencias directas y herramientas están fijadas en `backend/pyproject.toml`;
+los snapshots fijan también las transitivas resueltas en Windows/CPython 3.14.6.
+Revalidarlos al cambiar de plataforma/Python; Linux no está certificado aún.
 
 ```powershell
 python -m venv backend/.venv
 .\backend\.venv\Scripts\python.exe -m pip install -r backend/requirements-dev.lock
 .\backend\.venv\Scripts\python.exe -m pip install --no-deps -e backend
 .\backend\.venv\Scripts\python.exe scripts/bootstrap_local.py
-```
-
-El bootstrap crea o actualiza el `.env` de la raíz con credenciales aleatorias y
-rutas TLS. Conserva la configuración personalizada; `.env.example` documenta los
-nombres y deja las contraseñas vacías, sin valores inseguros predeterminados.
-
-```powershell
 .\backend\.venv\Scripts\python.exe scripts/bootstrap_local.py --check-only
 ```
 
-El bootstrap genera certificados de API, PostgreSQL y RabbitMQ firmados por una CA
-de desarrollo, y credenciales distintas aleatorias. Los certificados de servicios
-son válidos durante 90 días; la CA durante 365 días. El certificado API incluye
-`localhost`, `127.0.0.1` y `api`; los otros incluyen `postgres` y `rabbitmq`.
+El bootstrap crea o valida CA, certificados de desarrollo y credenciales aleatorias
+para PostgreSQL/RabbitMQ en `.env`; no provisiona por sí mismo esos servicios.
+Conserva la configuración personalizada y no rota contraseñas ni identidades.
+La contraseña inicial del portal requiere su configuración y comando explícitos
+explicados en la guía F003. `.env.example` solo documenta nombres y campos vacíos.
 
-Reejecutar el bootstrap comprueba los activos y no los cambia. Un conjunto parcial,
-expirado o incompatible se rechaza: no borrar ni sustituir archivos para intentar
-repararlo sin planificar la recuperación o rotación. Los secretos generados aún no
-se han provisionado en una base de datos ni en un broker.
+Certificados de servicio válidos 90 días, CA 365 días. No se instala confianza
+global de Windows. Activos parciales, vencidos o incompatibles se rechazan; no
+borrarlos para forzar una regeneración. Planificar su renovación y recuperación.
+El preparador PostgreSQL local conserva la CA y añade SAN de loopback específicos.
 
-Si procede de F002, la migración conserva los valores de `.local/secrets` en
-`APP_DB_ADMIN_PASSWORD`, `APP_DB_PASSWORD` y `APP_BROKER_PASSWORD` dentro de `.env`.
-El backend deja de usar `*_PASSWORD_FILE`. Los archivos anteriores se conservan como
-respaldo local, sin borrado automático. Un conflicto o conjunto parcial se rechaza
-en lugar de cambiar credenciales silenciosamente. `--check-only` no migra ni escribe.
+Para migraciones antiguas de F002, el bootstrap conserva las contraseñas anteriores
+de `.local/secrets` en `.env` sin borrarlas ni rotarlas. No hay fallback de lectura
+a `*_PASSWORD_FILE`; un conflicto se rechaza y `--check-only` no migra ni escribe.
 
 ## Arrancar y consultar HTTPS
 
@@ -61,91 +49,80 @@ en lugar de cambiar credenciales silenciosamente. `--check-only` no migra ni esc
 .\backend\.venv\Scripts\python.exe -m document_platform
 ```
 
-En otra terminal PowerShell:
+En otra terminal:
 
 ```powershell
 curl.exe --cacert .local/certs/ca.crt https://localhost:8443/api/v1/health
 curl.exe --cacert .local/certs/ca.crt https://localhost:8443/api/v1/ready
+.\backend\.venv\Scripts\python.exe scripts/probe_identity_local.py
 ```
 
-Los comandos anteriores usan `curl.exe` explícitamente para evitar los alias de
-PowerShell. No usar opciones que omitan la verificación de certificados. La CA no
-se incorpora al almacén de Windows, por lo que navegador o clientes del sistema no
-confiarán automáticamente en ella.
+`health` acredita el proceso; `ready` consulta PostgreSQL, presencia del esquema de
+identidad y RabbitMQ. Un fallo devuelve 503 con estados genéricos. El probe de
+identidad consulta por HTTPS e inicia/cierra una sesión del superusuario de bootstrap;
+lee el secreto de `.env` y no lo imprime. No es una interfaz para usuarios finales.
 
-Ejemplo equivalente con Python:
-
-```python
-import ssl
-from urllib.request import urlopen
-
-context = ssl.create_default_context(cafile=".local/certs/ca.crt")
-with urlopen("https://localhost:8443/api/v1/health", context=context, timeout=5) as response:
-    print(response.read().decode())
-```
-
-Detener el proceso con `Ctrl+C`. No cambiar el bind a una interfaz remota sin
-aprobar y completar autenticación, autorización y el diseño de exposición.
+No usar opciones que omitan CA o hostname. Detener la API con `Ctrl+C`. La API
+escucha en loopback; habilitar acceso remoto necesita el diseño de exposición.
+Swagger y OpenAPI públicos están deshabilitados; se incluye
+[el contrato estático](api/F003-openapi.json).
 
 ## Configuración y secretos
 
-`APP_*` se valida con Pydantic Settings desde el entorno y `.env`. Las credenciales
-obligatorias `APP_DB_PASSWORD` y `APP_BROKER_PASSWORD` se leen como valores secretos;
-las variables de entorno tienen precedencia. Se leen literalmente, sin expandir
-`${VARIABLE}` dentro de contraseñas. No se admiten valores débiles o variables
-duplicadas ambiguas. No hay fallback a archivos `*_PASSWORD_FILE`.
-`APP_TLS_CA_FILE` es obligatorio; PostgreSQL usa `verify-full` y RabbitMQ verifica
-CA y nombre de servidor. No se ofrece una bandera para desactivar estas comprobaciones.
+Pydantic valida `APP_*` desde entorno y `.env` (el entorno tiene precedencia).
+Las contraseñas se leen literalmente, sin expandir `${VARIABLE}`, y no se admiten
+valores vacíos, demasiado cortos, multilínea o claves APP duplicadas ambiguas.
+Los errores de configuración no incluyen valores recibidos. Las credenciales de
+administración SQL se cargan solo en herramientas administrativas explícitas.
 
-El worker comparte la configuración de dependencias, pero no necesita la clave
-privada de la API. Celery acepta únicamente JSON; resultados, eventos y control
-remoto están deshabilitados en esta base. No iniciar un worker Celery en Windows:
-su ejecución soportada se comprobará en Linux en la feature final.
+`.env` guarda secretos operativos; `.local/` guarda certificados, claves TLS y
+artefactos privados, ambos ignorados por Git. Las claves privadas no se incorporan
+a `.env` ni al contexto futuro de imágenes. Las ACL no acreditan cifrado en reposo.
+El responsable confirma cifrado actual; verificar volumen del servicio PostgreSQL,
+respaldos, custodia de CA y servidor antes de documentos sensibles reales.
 
-Los secretos operativos están en `.env`; los certificados y claves TLS están en
-`.local/`, ambos fuera de Git. No imprimirlos con comandos de diagnóstico ni
-incorporar valores reales a `.env.example`. Los permisos POSIX se
-restringen al crear archivos; esos permisos no prueban las ACL ni el cifrado de
-Windows. El responsable declara cifrado en las ubicaciones actuales. Verificar
-volúmenes, respaldos, custodia de CA y servidor antes de procesar datos reales.
+PostgreSQL usa `verify-full`, CA, hostname y TLS mínimo 1.2. RabbitMQ exige CA y
+nombre. No existe bandera de aplicación para deshabilitar las comprobaciones.
+El worker comparte ajustes, sin necesitar la clave privada API. Celery acepta JSON;
+resultados, eventos y control remoto permanecen deshabilitados. No iniciar Celery
+worker en Windows: su ejecución soportada se verificará en Linux al final.
 
 ## Comprobaciones
 
-Desde la raíz:
+Desde la raíz, con Usuario:
 
 ```powershell
 $testParent = Join-Path (Get-Location).Path '.local/test-runs'
 New-Item -ItemType Directory -Path $testParent -Force | Out-Null
 $testRun = Join-Path $testParent ('tests-' + (Get-Date -Format 'yyyyMMdd-HHmmssfff'))
-.\backend\.venv\Scripts\python.exe -m pytest -c backend/pyproject.toml backend/tests tests --basetemp $testRun
+# Incluir la siguiente variable solo cuando PostgreSQL TLS esté provisionado:
+$env:RUN_PG_INTEGRATION = '1'
+.\backend\.venv\Scripts\python.exe -m pytest -c backend/pyproject.toml backend/tests tests -q -W error --basetemp $testRun
 .\backend\.venv\Scripts\python.exe -m ruff check --config backend/pyproject.toml backend scripts tests
 .\backend\.venv\Scripts\python.exe -m ruff format --check --config backend/pyproject.toml backend scripts tests
 .\backend\.venv\Scripts\python.exe -m mypy --config-file backend/pyproject.toml backend/src/document_platform scripts
+.\backend\.venv\Scripts\python.exe -m pip check
 git diff --check
 ```
 
-Las pruebas generan activos sintéticos temporales. Verifican TLS real de la API,
-rechazo de confianza/nombre incorrectos y tráfico en texto plano, configuración,
-errores de disponibilidad y bootstrap idempotente. Las pruebas de adaptadores con
-dobles no acreditan conectividad con servicios reales.
+Usar un basetemp nuevo evita carpetas de temporales de pruebas antiguas. La suite
+utiliza certificados/datos sintéticos y prueba TLS real, rechazo de texto plano y
+confianza/nombre incorrectos. Con `RUN_PG_INTEGRATION=1` verifica bases nuevas,
+privilegios, transacciones y concurrencia contra PostgreSQL real. Sin esa variable,
+las pruebas de integración se omiten explícitamente. Las bases sintéticas quedan
+conservadas: no se ejecuta DROP ni se eliminan datos automáticamente.
 
 ## Diagnóstico
 
-- Fallo de inicio por configuración: comprobar archivos requeridos y rutas relativas
-  a la raíz; los errores no deben imprimir credenciales.
-- Certificado rechazado: usar la CA correspondiente y uno de los nombres del SAN.
-  No desactivar la validación ni instalar confianza global para ocultar el problema.
-- `/ready` devuelve 503: comprobar disponibilidad, nombre, certificados y credenciales
-  de PostgreSQL/RabbitMQ. Mientras no estén provisionados, es el estado esperado.
-- Bootstrap rechaza activos: conservarlos para diagnóstico; planificar recuperación
-  o rotación. No contiene un modo de reemplazo automático.
+- Inicio rechazado: revisar rutas desde raíz, campos requeridos y `.env` sin
+  imprimir su contenido. Evitar variables de entorno antiguas que lo sobrescriban.
+- Certificado rechazado: comprobar CA, vigencia y SAN. No ocultar el problema
+  deshabilitando la validación o instalando confianza global.
+- `/ready` 503: revisar estados de base/broker, sus certificados/credenciales y
+  haber ejecutado `identity_admin init-db`. Health no depende de esos servicios.
+- Login rechazado: revisar contraseña actual, cookie CSRF, Origin y cabecera.
+  Tras cinco fallos por cuenta, esperar a que venza la ventana configurada.
+- Bootstrap repetido: no cambia contraseña ni recrea al superusuario. No es un reset.
 
-No existen todavía imágenes publicadas, Compose ni comandos de despliegue. El
-objetivo final de descargar imágenes se concretará al aprobar registro y publicación.
-
-## RabbitMQ instalado localmente
-
-La integración TLS y la cola sintética se explican en [la guía RabbitMQ](rabbitmq-local.md).
-Ejecutar preparadores y pruebas desde la cuenta Windows propia, no desde cuentas
-Codex. Para evitar conflictos con temporales antiguos, seguir allí el ejemplo con
-`--basetemp` único bajo `.local/test-runs`. PostgreSQL continúa pendiente.
+No hay imágenes publicadas, Compose ni despliegue final. La publicación requiere
+registro y autorización expresa.
