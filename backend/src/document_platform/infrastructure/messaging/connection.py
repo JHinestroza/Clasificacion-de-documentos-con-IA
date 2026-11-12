@@ -20,10 +20,10 @@ def broker_url(settings: Settings) -> SecretStr:
     return SecretStr(f"amqps://{user}:{password}@{host}:{settings.broker_port}/{vhost}")
 
 
-def check_broker(settings: Settings) -> None:
-    """Authenticate and open a channel; do not declare queues or publish messages."""
+def broker_connection(settings: Settings) -> Connection:
+    """Build the verified AMQPS connection used by checks and the isolated probe."""
     timeout = settings.dependency_timeout_seconds
-    with Connection(  # type: ignore[no-untyped-call]  # Kombu's constructor lacks type annotations.
+    return Connection(  # type: ignore[no-untyped-call]
         hostname=settings.broker_host,
         port=settings.broker_port,
         userid=settings.broker_user,
@@ -32,7 +32,16 @@ def check_broker(settings: Settings) -> None:
         transport="pyamqp",
         ssl=broker_ssl_options(settings),
         connect_timeout=timeout,
-        transport_options={"read_timeout": timeout, "write_timeout": timeout},
-    ) as connection:
+        transport_options={
+            "read_timeout": timeout,
+            "write_timeout": timeout,
+            "confirm_publish": True,
+        },
+    )
+
+
+def check_broker(settings: Settings) -> None:
+    """Authenticate and open a channel; do not declare queues or publish messages."""
+    with broker_connection(settings) as connection:
         connection.connect()
         connection.channel().close()

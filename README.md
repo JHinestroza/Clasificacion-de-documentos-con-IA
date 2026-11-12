@@ -26,6 +26,8 @@ acordados. Las publicaciones remotas requieren autorización expresa.
 - [F001: acuerdos de trabajo](docs/features/F001-project-agreements.md).
 - [F002: base backend segura](docs/features/F002-secure-foundation.md).
 - [F002A: secretos en .env](docs/features/F002A-secrets-env.md).
+- [F002B: RabbitMQ con TLS](docs/features/F002B-rabbitmq-tls.md).
+- [Publicar y ver mensajes de prueba](docs/rabbitmq-local.md).
 - [Propuesta F003: cuentas locales y permisos](docs/features/F003-local-accounts-proposal.md).
 - [Desarrollo y verificación local](docs/development.md).
 - [Arquitectura y patrones actuales](docs/architecture.md).

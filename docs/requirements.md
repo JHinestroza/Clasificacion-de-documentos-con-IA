@@ -23,7 +23,7 @@ Este documento registra requisitos; no acredita funcionalidades implementadas.
 | R14 | `success` significa que pasó por la cola y terminó el procesamiento de metadatos. No requiere aprobación humana habitual. La intervención manual inicial atiende fallidos y sus acciones. |
 | R15 | El responsable confirma cifrado en las ubicaciones actuales de datos. La cobertura de futuros volúmenes, respaldos y servidor se verificará antes del despliegue con documentos reales. Esta confirmación no es una auditoría técnica del host. |
 | R16 | Guardar los secretos operativos en el `.env` de la raíz, excluido de Git. `.env.example` solo documenta nombres y valores ficticios/vacíos. Los certificados y claves TLS siguen en archivos protegidos referenciados desde la configuración. |
-| R17 | Usar cuentas locales administradas por el superusuario. La propuesta concreta de F003 detalla sesiones, permisos, auditoría y cambios de esquema pendientes de aprobación. |
+| R17 | Usar cuentas locales administradas por el superusuario. La propuesta concreta de F003 fue aprobada: sesiones, permisos, auditoría y cambios de esquema; su implementación sigue pendiente. |
 
 El superusuario de la aplicación no implica permisos de administrador del sistema,
 de Docker o de PostgreSQL. El acceso a documentos y reportes deberá considerar el
@@ -75,14 +75,21 @@ alcance autorizado, por ejemplo por fondo, además del permiso de ejecutar una a
 | F001 — Acuerdos de trabajo | Requisitos, decisiones pendientes y ficha verificable de esta entrega documental. |
 | F002 — Base backend segura | API HTTPS local, configuración validada, secretos en archivos, certificados y pruebas TLS. Docker y servicios reales se verifican en la feature final. |
 | F002A — Secretos en .env | Migrar credenciales sin rotarlas, validar lectura literal y mantener redacción de errores y exclusiones de Git. |
-| F003 — Usuarios y permisos | Cuentas locales confirmadas; sesiones, administración, permisos y auditoría según propuesta revisable antes de crear el esquema. |
+| F002B — RabbitMQ local TLS | Broker real, permisos mínimos y cola sintética verificable en Windows; sin worker Celery. |
+| F003 — Usuarios y permisos | Alcance aprobado por el responsable; implementación y PostgreSQL pendientes. |
 | F004 — Ingestión y operación | Carpeta de ingreso, interfaz mínima, códigos, hashes, estados y control de inicio/pausa/parada. |
 | F005 — Extracción recuperable | Workers, texto por página, fallos, cola separada, reencolado e idempotencia comprobada. |
 | F006 — Metadatos configurables | Perfil de fondo, esquema y prompt versionados; propuestas validadas con evidencia. |
 | F007 — Resultados y operación | Completar consulta operativa y acciones auditadas sobre fallidos; sin aprobación humana obligatoria de los procesados correctamente. |
 | Final — Despliegue Linux | Docker/Compose, servicios PostgreSQL/RabbitMQ reales, workers Linux, cifrado de almacenamiento, integración, reinicios y evidencia de ejecución completa. |
 
-La base técnica y F002 están aprobadas; las demás features requieren su alcance.
+La base técnica, F002, F003 y la prueba F002B están aprobadas; el resto de features requiere su alcance.
 El dashboard y los reportes avanzados
 se planificarán después. Las funciones de seguridad, historial y recuperación
 acompañarán a las features que las necesitan; no serán un endurecimiento posterior.
+
+## Actualización del 2026-11-12
+
+RabbitMQ instalado y prueba real por TLS autorizada antes de Docker. El responsable
+exige archivos bajo Usuario, sin propietarios Codex. F003 fue aprobada previamente;
+su ficha conserva el diseño mientras la implementación sigue pendiente.
