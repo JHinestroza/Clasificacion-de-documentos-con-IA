@@ -3,8 +3,9 @@
 ## Alcance actual
 
 Backend local Windows con HTTPS, cuentas locales, permisos y auditoría PostgreSQL.
-PostgreSQL y RabbitMQ están provisionados con TLS verificado. F004A añade un portal React de cuentas/auditoría, con confianza de CA del navegador
-pendiente. No hay ingestión ni procesamiento de PDF. Docker y los workers Linux se difieren a
+PostgreSQL y RabbitMQ están provisionados con TLS verificado. F004A añade un portal
+React de cuentas/auditoría verificado en navegador. Su CA tiene confianza autorizada
+en el almacén Windows de Usuario. No hay ingestión ni procesamiento de PDF. Docker y los workers Linux se difieren a
 la feature final por indicación del responsable.
 
 - [Portal React](react-portal.md): compilar, ejecutar por HTTPS y estado de confianza del navegador.
@@ -35,8 +36,9 @@ Conserva la configuración personalizada y no rota contraseñas ni identidades.
 La contraseña inicial del portal requiere su configuración y comando explícitos
 explicados en la guía F003. `.env.example` solo documenta nombres y campos vacíos.
 
-Certificados de servicio válidos 90 días, CA 365 días. No se instala confianza
-global de Windows. Activos parciales, vencidos o incompatibles se rechazan; no
+Certificados de servicio válidos 90 días, CA 365 días. El bootstrap no instala
+confianza. La CA existente se importó aparte con autorización expresa para Usuario
+CurrentUser\Root; no en el almacén de la máquina. Activos parciales, vencidos o incompatibles se rechazan; no
 borrarlos para forzar una regeneración. Planificar su renovación y recuperación.
 El preparador PostgreSQL local conserva la CA y añade SAN de loopback específicos.
 

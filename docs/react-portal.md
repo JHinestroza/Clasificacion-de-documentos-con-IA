@@ -25,26 +25,28 @@ No usar vite dev/preview con HTTP ni desactivar la validación de TLS.
 `frontend/dist`. No colocar documentos, claves ni `.env` en ese directorio. Vite no
 carga archivos env ni publica APP_*; las conexiones son relativas al mismo origen.
 
-## Confianza HTTPS del navegador: pendiente
+## Confianza HTTPS del navegador: autorizada y verificada
 
-La CA de desarrollo todavía no es confiable para el navegador. El intento de
-comprobación fue rechazado con `ERR_CERT_AUTHORITY_INVALID`; no se saltó el aviso.
-La API y recursos compilados se verificaron desde un cliente que confía explícitamente
-en `.local/certs/ca.crt`, conservando hostname y validación de cadena.
+El 2026-11-13 el responsable autorizó importar esta CA de desarrollo en
+`Cert:\CurrentUser\Root` de la cuenta Windows Usuario. La importación y su identidad
+se verificaron; el almacén de la máquina no recibió la CA. Un cliente con confianza
+normal del sistema y el navegador validaron el portal HTTPS sin omitir avisos,
+verificación de cadena ni nombre de servidor.
 
-Antes de utilizar el portal en el navegador, el responsable debe elegir entre
-confiar explícitamente en esa CA de desarrollo en el entorno local o proporcionar
-una cadena/certificado institucional válido. No se modifica automáticamente el
-almacén Windows. Confiar una raíz permite validar certificados firmados por ella y
-requiere custodiar su clave privada. El certificado público propuesto es:
+En esta computadora, los clientes que utilizan ese almacén ya pueden verificar
+la interfaz. Un equipo/perfil diferente necesita su propia decisión de confianza,
+o un certificado institucional válido. El arranque de la aplicación y el bootstrap
+no instalan certificados automáticamente. La CA autorizada es:
 
 - Archivo: `.local/certs/ca.crt`; no es la clave privada.
 - SHA-256: `277A36B2AF21B9FCD33A24EF5AE2836D80719C8C8C6DFA32783596DDC6A91D13`.
 - Identificador del almacén SHA-1: `883400F07F8410419067E8DE6AF24ACC1C2D3991`.
 - Vigencia actual: hasta 2027-11-10. Revalidar la huella si se renueva la CA.
 
-No omitir los avisos ni instalar una raíz diferente sin comprobar su identidad.
-La prueba visual del portal sigue pendiente; las pruebas de componentes no la sustituyen.
+No omitir los avisos ni instalar una raíz diferente sin comprobar su identidad y
+autorización. La revisión real del portal se completó con cuentas sintéticas,
+vistas de escritorio/móvil y comprobación de permisos. La PKI institucional y el
+despliegue final siguen pendientes.
 
 ## Acceso y acciones
 
@@ -82,4 +84,13 @@ npm.cmd --prefix frontend audit --audit-level=moderate
 Vitest/jsdom usa identidades sintéticas y respuestas controladas, sin contraseñas
 reales ni documentos. Las pruebas backend completas con PostgreSQL real se explican
 en [desarrollo](development.md). [La ficha F004A](features/F004A-react-portal.md)
-distingue resultados automáticos, HTTPS real y comprobación visual pendiente.
+registra los resultados automáticos, HTTPS real y la revisión visual completada.
+
+## Nota sobre el cierre en Windows
+
+En la revisión con Python 3.14 se observaron avisos asyncio `WinError 10054` al
+cerrar conexiones. La API temporal cerró el puerto, pero su proceso necesitó una
+finalización explícita después de comprobar su identidad. Las operaciones y su
+auditoría se verificaron antes del cierre. Evitar detener procesos Python por nombre:
+el servidor de pruebas se identificó individualmente. La operación Linux sigue
+pendiente de la feature final.

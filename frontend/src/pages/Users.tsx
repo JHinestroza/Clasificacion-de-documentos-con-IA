@@ -397,7 +397,9 @@ export function UsersPage() {
                                         <th>Usuario</th>
                                         <th>Tipo de cuenta</th>
                                         <th>Estado</th>
-                                        <th>Creación</th>
+                                        <th className="created-column">
+                                            Creación
+                                        </th>
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
@@ -441,7 +443,7 @@ export function UsersPage() {
                                                         : "Inactiva"}
                                                 </span>
                                             </td>
-                                            <td className="date-cell">
+                                            <td className="date-cell created-column">
                                                 {date(person.created_at)}
                                             </td>
                                             <td>

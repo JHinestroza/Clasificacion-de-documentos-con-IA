@@ -1103,3 +1103,13 @@ fieldset {
         transition: none !important;
     }
 }
+
+/* Keep account names readable when the surrounding workspace becomes narrow. */
+.person-cell {
+    min-width: 150px;
+}
+@media (max-width: 1100px) {
+    .created-column {
+        display: none;
+    }
+}

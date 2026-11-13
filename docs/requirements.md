@@ -1,6 +1,6 @@
 # Requisitos y restricciones
 
-Actualizado: 2026-11-12. Fuente: instrucciones del responsable del proyecto.
+Actualizado: 2026-11-13. Fuente: instrucciones del responsable del proyecto.
 Este documento registra requisitos; no acredita funcionalidades implementadas.
 
 ## Acordado
@@ -77,7 +77,7 @@ alcance autorizado, por ejemplo por fondo, además del permiso de ejecutar una a
 | F002A — Secretos en .env | Migrar credenciales sin rotarlas, validar lectura literal y mantener redacción de errores y exclusiones de Git. |
 | F002B — RabbitMQ local TLS | Broker real, permisos mínimos y cola sintética verificable en Windows; sin worker Celery. |
 | F003 — Usuarios y permisos | Cuentas locales, sesiones revocables, permisos y auditoría implementados y verificados con PostgreSQL TLS nativo Windows. |
-| F004A — Portal React | Acceso, cuentas, permisos y auditoría conectados a F003; verificación de navegador pendiente de confianza de CA. |
+| F004A — Portal React | Portal React de acceso, cuentas, permisos y auditoría verificado en navegador por HTTPS con confianza autorizada para Usuario. |
 | F004 — Ingestión y operación | Carpeta de ingreso, interfaz mínima, códigos, hashes, estados y control de inicio/pausa/parada. |
 | F005 — Extracción recuperable | Workers, texto por página, fallos, cola separada, reencolado e idempotencia comprobada. |
 | F006 — Metadatos configurables | Perfil de fondo, esquema y prompt versionados; propuestas validadas con evidencia. |

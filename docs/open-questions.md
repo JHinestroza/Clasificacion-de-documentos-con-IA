@@ -1,6 +1,6 @@
 # Preguntas y decisiones pendientes
 
-Actualizado: 2026-11-12. Cerrar cada decisión antes de implementar la feature afectada.
+Actualizado: 2026-11-13. Cerrar cada decisión antes de implementar la feature afectada.
 
 ## Decisiones cerradas
 
@@ -20,7 +20,8 @@ Actualizado: 2026-11-12. Cerrar cada decisión antes de implementar la feature a
 ## Antes de los usuarios y de utilizar datos reales
 
 - Custodia, recuperación y renovación de claves y certificados institucionales.
-  F002 solo genera una CA de desarrollo y no instala confianza en Windows.
+  El bootstrap genera una CA de desarrollo sin instalar confianza. En F004A se
+  autorizó y verificó su importación únicamente en Usuario CurrentUser\Root.
 - El alcance por fondo/reporte debe concretarse antes de exponer esos recursos.
   F003 ya implementa cuentas locales, sesiones revocables, permisos y auditoría.
   Recuperación de cuentas y políticas de retención necesitan diseño antes de ampliarlas.
@@ -66,5 +67,6 @@ Docker, los workers Linux y el despliegue completo siguen diferidos a la feature
 - Pausa y detención por lote con finalización de la admisión iniciada.
 - F004A implementa el portal de cuentas/auditoría; no cambia el esquema documental
   ni permisos del broker. El plan F004 permanece en `feature/ingestion-operacion`.
-- El navegador rechaza la CA de desarrollo. Falta elegir confianza local explícita
-  o certificado institucional antes de completar la prueba visual del portal.
+- Resuelto el 2026-11-13: el responsable autorizó la CA existente en Usuario
+  CurrentUser\Root. Confianza y revisión visual del portal verificadas; no se pide
+  esa aprobación otra vez. PKI institucional y nuevos equipos conservan sus pendientes.

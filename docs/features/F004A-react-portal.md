@@ -1,8 +1,8 @@
 # F004A — Portal React para cuentas y auditoría
 
-- Estado: implementación y pruebas automáticas; revisión en navegador pendiente de confianza de CA.
+- Estado: implementada y verificada, incluida la revisión real del navegador.
 - Rama: `feature/interfaz-react`, desde `develop`.
-- Fecha: 2026-11-12.
+- Inicio: 2026-11-12. Verificación final: 2026-11-13.
 - Parte inicial verificable de F004. La ingestión de PDF permanece pendiente y no se presenta como implementada.
 
 ## Alcance y decisiones registradas
@@ -66,10 +66,10 @@ parte del cierre, sin ejecutar un upgrade global ni npm audit fix --force.
 
 ## Comprobaciones reales
 
-- Backend completo con PostgreSQL TLS real: **150 pruebas pasaron**, incluyendo
+- Backend completo con PostgreSQL TLS real (2026-11-12): **150 pruebas pasaron**, incluyendo
   las 139 anteriores y once de entrega web/protección de archivos.
 - React/cliente con identidades sintéticas y respuestas controladas: **19 pruebas
-  pasaron**. Se verifican acceso sin privilegios y URL directa, cuenta sin permisos
+  pasaron**, repetidas el 2026-11-13 tras el ajuste adaptable. Se verifican acceso sin privilegios y URL directa, cuenta sin permisos
   por defecto, concesiones con motivo, desactivación, password/logout/revocación,
   errores sanitizados, CSRF, cancelación de respuestas antiguas y auditoría como texto.
 - La validación detectó y permitió corregir etiquetas accesibles; los nombres y
@@ -85,12 +85,34 @@ parte del cierre, sin ejecutar un upgrade global ni npm audit fix --force.
   del código y build sin valores de secretos operativos ni claves privadas.
   Los enlaces locales de documentación son válidos.
 
-Las pruebas de componentes usan jsdom; acreditan lógica y DOM, no una revisión
-visual en un motor de navegador. La navegación real a HTTPS fue rechazada con
-`ERR_CERT_AUTHORITY_INVALID`. La CA de desarrollo no está en los almacenes Root
-de Usuario ni de la máquina. No se omitió esa verificación ni se cambió la confianza
-por iniciativa propia. La instalación de confianza o un certificado institucional
-requieren la decisión del responsable antes de completar la comprobación visual.
+Las pruebas de componentes usan jsdom y se complementaron el 2026-11-13 con
+navegación real por HTTPS, sin saltar avisos ni desactivar verificación. El responsable
+autorizó expresamente la CA SHA-256
+`277A36B2AF21B9FCD33A24EF5AE2836D80719C8C8C6DFA32783596DDC6A91D13`
+en `Cert:\CurrentUser\Root` de Usuario. Se verificó su presencia en .NET/registro
+bajo el SID del operador; no se instaló en el almacén de la máquina. Un cliente
+con `ssl.create_default_context()` validó cadena y hostname sin cafile especial;
+el navegador abrió el portal con la misma confianza.
+
+La revisión usó una base sintética independiente de la principal y tres cuentas
+ficticias: superusuario, lector sin concesiones y auditor con `audit.read`. Se
+comprobaron login/logout, consultas reales, URL de administración denegada para el
+lector y auditoría permitida sin administración para el auditor. Se revisaron inicio,
+usuarios, auditoría, cuenta propia, diálogos de creación/permisos sin guardar,
+paginación de auditoría y salto al contenido por teclado. El cambio de contraseña
+se comprobó en componentes/API; no se cambió una credencial desde la automatización
+visual. Las cuentas y su historial sintético se conservan, sin DROP ni borrado.
+
+Se verificaron anchos de escritorio y móvil (1280×900, viewport normal cercano a
+870 px y 390×844). Se corrigió la tabla para conservar legibilidad de nombres en
+ventanas estrechas: ancho mínimo de la celda y fecha de creación oculta bajo 1100 px.
+La fecha continúa visible en escritorio; en móvil, el desplazamiento horizontal
+queda dentro de la tabla, sin ensanchar la página. La vista y controles de tamaño
+se restablecieron al terminar. No se guardaron contraseñas en el navegador.
+
+La captura de evidencia contiene solo datos de prueba y tiene propietario Usuario;
+se conserva una copia privada en `.local/feature-evidence/F004A/`. La autorización,
+identidad de CA y fixture se registran en `.local/` fuera de Git.
 
 ## Exclusiones y pendientes
 
@@ -99,6 +121,17 @@ lotes, publicación de trabajos, extracción, IA ni Docker. Se mantiene la propu
 F004 en `feature/ingestion-operacion`. Los permisos de funciones futuras se muestran
 como concesiones del catálogo, sin fingir que esas funciones ya están operativas.
 
-No se fusionará esta rama como entrega cerrada mientras quede pendiente la
-comprobación requerida del navegador. El servidor temporal de prueba debe detenerse
-al terminar la sesión de comprobación; los servicios de PostgreSQL/RabbitMQ se conservan.
+La comprobación requerida del navegador está completa y permite integrar F004A
+localmente en `develop`. El servidor temporal se detuvo al terminar; PostgreSQL
+y RabbitMQ conservan su ejecución y datos. La confianza es de desarrollo en esta
+cuenta Windows; no certifica el futuro despliegue Linux ni la PKI institucional.
+
+## Observación del entorno Windows
+
+Durante la revisión y desconexiones se registraron avisos de transporte asyncio
+`WinError 10054` en Python 3.14. Las respuestas, sesiones y auditoría comprobadas
+fueron correctas. En el apagado, el puerto se cerró pero el proceso quedó pendiente;
+se terminó exclusivamente el PID de la API de pruebas, verificando propietario,
+comando y fecha de creación. No se detuvieron PostgreSQL/RabbitMQ ni se borraron
+datos. La finalización de procesos/transportes se revalidará en la operación Linux;
+no se presenta este comportamiento Windows como una prueba de ese despliegue.

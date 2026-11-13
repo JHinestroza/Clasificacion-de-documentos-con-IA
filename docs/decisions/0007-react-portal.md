@@ -38,9 +38,11 @@ TypeScript 6.0.3 respeta los peers del linter; migrar a 7 exige verificar compat
 El override minimatch 11.0.1 aplica [el parche del proveedor](https://github.com/advisories/GHSA-g3hv-75wg-m249),
 con validación de herramientas. No se cambia el npm global de la computadora.
 
-La confianza en la CA del navegador sigue pendiente de autorización; no se instala
-ninguna raíz ni se omite la validación de certificados para acreditar la interfaz.
-Los componentes y las rutas HTTPS se prueban con datos sintéticos independientemente.
+El 2026-11-13 el responsable autorizó la CA existente en Usuario CurrentUser\Root.
+Se instaló únicamente ese certificado público, se verificó su huella y se comprobó
+HTTPS con el almacén normal y el navegador. La aplicación no instala confianza al
+arrancar y la máquina no recibió la CA. La revisión visual se completó con cuentas
+sintéticas aisladas, conservando la validación de cadena/hostname.
 La ingestión F004 y su esquema/grants se implementarán en su propia entrega.
 
 ## Referencias primarias

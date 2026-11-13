@@ -6,7 +6,7 @@ generar metadatos configurables y conservar trazabilidad del procesamiento y los
 El backend local dispone de HTTPS, cuentas locales, permisos y auditoría persistida
 en PostgreSQL con TLS. RabbitMQ está integrado para pruebas sintéticas. La ingestión,
 el procesamiento documental siguen pendientes. F004A incorpora un portal React
-para cuentas y auditoría; su prueba de navegador espera la confianza de la CA.
+para cuentas y auditoría, verificado por HTTPS con cuentas sintéticas.
 Docker se ha diferido a una feature final.
 
 ## Desarrollo por features
@@ -51,7 +51,8 @@ PDF, texto, base de datos, registros, respaldos y claves. La red interna de Dock
 no sustituye TLS. El responsable confirma cifrado en las ubicaciones actuales; la
 cobertura del despliegue y respaldos deberá comprobarse antes de usar datos reales.
 
-La base local usa una CA privada de desarrollo sin instalarla en Windows. Los
+La base local usa una CA privada de desarrollo. El responsable autorizó su confianza
+en el almacén de la cuenta Windows Usuario; el almacén de la máquina no se modificó. Los
 certificados y claves TLS se generan en `.local/`; las credenciales operativas se
 guardan en el `.env` de la raíz. Ambos están ignorados por Git. No hay contraseñas
 predeterminadas. Consulte la guía de desarrollo para arrancar HTTPS.

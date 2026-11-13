@@ -42,8 +42,8 @@ curl.exe --cacert .local/certs/ca.crt https://localhost:8443/api/v1/health
 curl.exe --cacert .local/certs/ca.crt https://localhost:8443/api/v1/ready
 ```
 
-No se usan opciones que omitan validación TLS. La CA de desarrollo no está instalada
-en la confianza global de Windows. Detener la API con `Ctrl+C`.
+No se usan opciones que omitan validación TLS. La CA de desarrollo está autorizada y verificada en el almacén Windows de Usuario
+desde F004A; no se instaló en el almacén de la máquina. Detener la API con `Ctrl+C`.
 
 ## Preparar una instalación local nueva
 
