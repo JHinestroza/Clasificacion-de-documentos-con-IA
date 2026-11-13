@@ -5,7 +5,9 @@
 Un paquete Python contiene API, dominio, casos de uso y adaptadores. Se verificó
 Windows con HTTPS, PostgreSQL nativo TLS y RabbitMQ AMQPS. La API y el futuro worker
 son procesos separados; Docker y la ejecución Celery Linux siguen en la feature final.
-No hay procesamiento documental ni interfaz visual todavía.
+F004A añade una interfaz React compilada, servida desde la misma API HTTPS.
+Su revisión visual y HTTPS están verificados con la CA autorizada para Usuario.
+No hay procesamiento documental.
 
 ```mermaid
 flowchart LR
@@ -62,8 +64,9 @@ propietaria de la base: la API no usa credenciales administrativas ni puede borr
 o alterar auditoría. El administrador propietario PostgreSQL conserva su autoridad.
 
 Secretos en `.env` ignorado y claves TLS en archivos protegidos de `.local/`; la
-identidad nativa PostgreSQL se copia con ACL limitada a ProgramData. La CA no se
-instala en Windows. El responsable declara almacenamiento cifrado; esa declaración
+identidad nativa PostgreSQL se copia con ACL limitada a ProgramData. La CA existente
+se confió expresamente en Usuario CurrentUser\Root el 2026-11-13, sin alterar el
+almacén de la máquina; el arranque no instala confianza. El responsable declara almacenamiento cifrado; esa declaración
 no verifica host, futuros volúmenes ni respaldos. La PKI institucional y su renovación
 siguen pendientes antes de datos reales.
 
@@ -71,3 +74,10 @@ Los resultados documentales futuros usarán historial persistente. Un fallo pued
 dejar artefactos parciales sin publicarlos como metadatos completos. Retirar un
 fallido del reencolamiento conservará PDF, causa, actor e historial; F003 no mueve
 archivos ni implementa esos trabajos.
+
+## Portal React F004A
+
+React/TypeScript/Vite compila en `frontend/dist`. FastAPI sirve únicamente index y
+assets públicos con huella, con CSP del mismo origen. Node no es un runtime del
+servidor y el frontend no contiene secretos ni almacena identificadores de sesión.
+[ADR 0007](decisions/0007-react-portal.md) registra la elección y sus límites.

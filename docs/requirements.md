@@ -1,6 +1,6 @@
 # Requisitos y restricciones
 
-Actualizado: 2026-11-12. Fuente: instrucciones del responsable del proyecto.
+Actualizado: 2026-11-13. Fuente: instrucciones del responsable del proyecto.
 Este documento registra requisitos; no acredita funcionalidades implementadas.
 
 ## Acordado
@@ -12,7 +12,7 @@ Este documento registra requisitos; no acredita funcionalidades implementadas.
 | R03 | Desarrollar inicialmente en Windows. Docker Compose con servicios Linux está aprobado, pero su instalación, definición de contenedores y validación de despliegue se difieren explícitamente a una feature final. El objetivo operativo final es descargar imágenes y arrancar el sistema. |
 | R04 | Mover físicamente los archivos desde ingreso/procesamiento hacia `failed` o `success`; retirarlos del origen solo mediante una operación recuperable que preserve su contenido. |
 | R05 | Ingresar documentos desde una carpeta mediante una interfaz amigable con controles de inicio y parada. Definir pausa y cancelación por separado. |
-| R06 | Omitir una nueva ingestión si su código ya está registrado y dejar constancia del motivo. Falta definir extracción y normalización del código. |
+| R06 | Omitir una nueva ingestión si su código ya está registrado y dejar constancia del motivo. Ejemplos acordados: CAB01.pdf/CAB02.pdf con códigos completos CAB01/CAB02, conservando ceros. |
 | R07 | Configurar fondo y metadatos según los archivos o lotes, mediante configuración y prompts. La salida debe respetar un esquema validado. |
 | R08 | Administrar usuarios mediante un superusuario de la aplicación y aplicar mínimo privilegio. |
 | R09 | Distinguir permisos para consultar documentos, ver dashboard y reportes, iniciar, pausar, detener, reencolar y eliminar. El backend debe verificar los permisos. |
@@ -77,6 +77,7 @@ alcance autorizado, por ejemplo por fondo, además del permiso de ejecutar una a
 | F002A — Secretos en .env | Migrar credenciales sin rotarlas, validar lectura literal y mantener redacción de errores y exclusiones de Git. |
 | F002B — RabbitMQ local TLS | Broker real, permisos mínimos y cola sintética verificable en Windows; sin worker Celery. |
 | F003 — Usuarios y permisos | Cuentas locales, sesiones revocables, permisos y auditoría implementados y verificados con PostgreSQL TLS nativo Windows. |
+| F004A — Portal React | Portal React de acceso, cuentas, permisos y auditoría verificado en navegador por HTTPS con confianza autorizada para Usuario. |
 | F004 — Ingestión y operación | Carpeta de ingreso, interfaz mínima, códigos, hashes, estados y control de inicio/pausa/parada. |
 | F005 — Extracción recuperable | Workers, texto por página, fallos, cola separada, reencolado e idempotencia comprobada. |
 | F006 — Metadatos configurables | Perfil de fondo, esquema y prompt versionados; propuestas validadas con evidencia. |
@@ -93,3 +94,9 @@ acompañarán a las features que las necesitan; no serán un endurecimiento post
 RabbitMQ instalado y prueba real por TLS autorizada antes de Docker. El responsable
 exige archivos bajo Usuario, sin propietarios Codex. F003 está implementada y verificada con PostgreSQL 18.7 nativo Windows y TLS.
 La integración real local no sustituye el despliegue Linux/Compose de la feature final.
+
+## Reglas concretadas para F004
+
+Código completo sin extensión: CAB01.pdf → CAB01, CAB02.pdf → CAB02. Conservar
+ceros; máximo de 100 MB por PDF. Controles por lote: pausar/detener finaliza la
+admisión iniciada y conserva pendientes. React o Vue autorizado; F004A adopta React.

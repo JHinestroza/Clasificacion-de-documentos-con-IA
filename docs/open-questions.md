@@ -1,6 +1,6 @@
 # Preguntas y decisiones pendientes
 
-Actualizado: 2026-11-12. Cerrar cada decisión antes de implementar la feature afectada.
+Actualizado: 2026-11-13. Cerrar cada decisión antes de implementar la feature afectada.
 
 ## Decisiones cerradas
 
@@ -20,7 +20,8 @@ Actualizado: 2026-11-12. Cerrar cada decisión antes de implementar la feature a
 ## Antes de los usuarios y de utilizar datos reales
 
 - Custodia, recuperación y renovación de claves y certificados institucionales.
-  F002 solo genera una CA de desarrollo y no instala confianza en Windows.
+  El bootstrap genera una CA de desarrollo sin instalar confianza. En F004A se
+  autorizó y verificó su importación únicamente en Usuario CurrentUser\Root.
 - El alcance por fondo/reporte debe concretarse antes de exponer esos recursos.
   F003 ya implementa cuentas locales, sesiones revocables, permisos y auditoría.
   Recuperación de cuentas y políticas de retención necesitan diseño antes de ampliarlas.
@@ -29,11 +30,13 @@ Actualizado: 2026-11-12. Cerrar cada decisión antes de implementar la feature a
 
 ## Antes de ingestión, extracción y metadatos
 
-- Dos o tres nombres ficticios de PDF y ubicación exacta del código en el nombre.
+- Nombres de fondos a configurar y cantidad inicial de fondos; los ejemplos de
+  código y el límite de tamaño ya se registraron abajo.
 - Reglas de normalización del código y deduplicación por contenido SHA-256.
-- Tamaños y páginas habituales/máximos; picos de carga y forma de completar la copia
+- Páginas habituales/máximas, picos de carga y forma de completar la copia
   de archivos en la carpeta de entrada.
-- Alcance de iniciar, pausar y detener: por lote, fondo o ejecución completa.
+- Controles por lote confirmados: finalizar la admisión iniciada al pausar/detener;
+  conservar pendientes. El efecto sobre la futura ejecución del worker se diseñará en F005.
 - Política de reintentos, errores transitorios, documentos sin texto y fallos
   permanentes. Diferenciar cancelar un trabajo de detener el servicio.
 - Primeros campos de metadatos, ejemplos sintéticos y esquema de salida esperado.
@@ -55,3 +58,15 @@ El alcance detallado de F003 ya fue aprobado; no volver a consultarlo. RabbitMQ 
 instalado y se autorizó verificarlo por TLS antes de Docker. PostgreSQL 18.7 está
 instalado e integrado por TLS en F003; allí persisten usuarios, sesiones y auditoría.
 Docker, los workers Linux y el despliegue completo siguen diferidos a la feature final.
+
+## Respuestas para F004 y entrega inicial F004A
+
+- Se eligió React o Vue; se adopta React/TypeScript/Vite para la interfaz.
+- Ejemplos: CAB01.pdf y CAB02.pdf; códigos completos CAB01 y CAB02 conservando ceros.
+- Límite por archivo: 100 MB (100 000 000 bytes para la implementación del ingreso).
+- Pausa y detención por lote con finalización de la admisión iniciada.
+- F004A implementa el portal de cuentas/auditoría; no cambia el esquema documental
+  ni permisos del broker. El plan F004 permanece en `feature/ingestion-operacion`.
+- Resuelto el 2026-11-13: el responsable autorizó la CA existente en Usuario
+  CurrentUser\Root. Confianza y revisión visual del portal verificadas; no se pide
+  esa aprobación otra vez. PKI institucional y nuevos equipos conservan sus pendientes.
