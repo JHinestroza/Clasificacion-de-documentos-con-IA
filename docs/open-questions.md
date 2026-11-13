@@ -70,3 +70,12 @@ Docker, los workers Linux y el despliegue completo siguen diferidos a la feature
 - Resuelto el 2026-11-13: el responsable autorizó la CA existente en Usuario
   CurrentUser\Root. Confianza y revisión visual del portal verificadas; no se pide
   esa aprobación otra vez. PKI institucional y nuevos equipos conservan sus pendientes.
+
+## Preparación F004B — ingreso por carpetas
+
+[Propuesta concreta](features/F004B-ingestion-carpetas-proposal.md) en
+`feature/ingestion-carpetas`, desde el develop que incluye F004A. Nombre del primer
+fondo consultado; si aún no se define, solo se preparará PRUEBAS para fixtures.
+Pendiente aprobar conjuntamente esquema/ámbito, reglas adicionales de código,
+validación/entrega completa y grants específicos. No hay carpetas operativas,
+migraciones ni ampliación de permisos aplicadas por esta preparación.
