@@ -15,6 +15,9 @@ existing development CA in Usuario CurrentUser\Root on 2026-11-13; this trust is
 installed and verified (identity in docs/react-portal.md). Do not request approval
 again for that existing trust or bypass certificate warnings. A different CA,
 account/device or machine-wide scope requires a new security decision.
+F004B ingestion by folders, its additive schema/resource scopes, exact broker grants
+and bounded PDF validation were expressly approved on 2026-11-13. The first fonds
+is UFM. Do not request this approval again; implement and verify before merging.
 Keep a modular application with separate API and worker processes. Do not build
 independent microservices by default.
 

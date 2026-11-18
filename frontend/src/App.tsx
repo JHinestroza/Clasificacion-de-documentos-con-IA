@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
     BookOpen,
+    FolderInput,
     FileClock,
     Home as HomeIcon,
     LogOut,
@@ -14,10 +15,12 @@ import { Login } from "./pages/Login";
 import { Home } from "./pages/Home";
 import { UsersPage } from "./pages/Users";
 import { AuditPage } from "./pages/Audit";
+import { IntakePage } from "./pages/Intake";
 import { AccountPage } from "./pages/Account";
 
 const labels: Record<string, string> = {
     inicio: "Inicio",
+    ingreso: "Ingreso de documentos",
     usuarios: "Usuarios y permisos",
     auditoria: "Auditoría",
     cuenta: "Mi cuenta",
@@ -72,7 +75,24 @@ export function App() {
     if (phase === "guest" || !user) return <Login />;
     const canAudit =
         user.is_superuser || user.permissions.includes("audit.read");
+    const canIntake =
+        user.is_superuser ||
+        user.permissions.some((p) =>
+            [
+                "documents.read",
+                "failed.read",
+                "processing.start",
+                "processing.pause",
+                "processing.stop",
+            ].includes(p),
+        );
     const links = [
+        {
+            id: "ingreso",
+            label: "Ingreso de documentos",
+            icon: FolderInput,
+            allowed: canIntake,
+        },
         { id: "inicio", label: "Inicio", icon: HomeIcon, allowed: true },
         {
             id: "usuarios",
@@ -89,6 +109,7 @@ export function App() {
         { id: "cuenta", label: "Mi cuenta", icon: ShieldCheck, allowed: true },
     ];
     const denied =
+        (page === "ingreso" && !canIntake) ||
         (page === "usuarios" && !user.is_superuser) ||
         (page === "auditoria" && !canAudit);
     return (
@@ -178,6 +199,8 @@ export function App() {
                             </section>
                         ) : page === "inicio" ? (
                             <Home />
+                        ) : page === "ingreso" ? (
+                            <IntakePage />
                         ) : page === "usuarios" ? (
                             <UsersPage />
                         ) : page === "auditoria" ? (

@@ -5,9 +5,12 @@
 Backend local Windows con HTTPS, cuentas locales, permisos y auditoría PostgreSQL.
 PostgreSQL y RabbitMQ están provisionados con TLS verificado. F004A añade un portal
 React de cuentas/auditoría verificado en navegador. Su CA tiene confianza autorizada
-en el almacén Windows de Usuario. No hay ingestión ni procesamiento de PDF. Docker y los workers Linux se difieren a
+en el almacén Windows de Usuario. F004B incorpora ingreso de PDF por carpeta y publicación de trabajos; la extracción
+y los metadatos siguen pendientes. Docker y los workers Linux se difieren a
 la feature final por indicación del responsable.
 
+- [Ingreso local de PDF — UFM](ingestion-local.md): carpetas, lotes, proceso de ingreso,
+  recuperación y permisos.
 - [Portal React](react-portal.md): compilar, ejecutar por HTTPS y estado de confianza del navegador.
 - [Usuarios, permisos y PostgreSQL local](identity-local.md): arranque, prueba de
   login/logout, aprovisionamiento explícito, contrato HTTP y pruebas reales.
@@ -100,7 +103,9 @@ New-Item -ItemType Directory -Path $testParent -Force | Out-Null
 $testRun = Join-Path $testParent ('tests-' + (Get-Date -Format 'yyyyMMdd-HHmmssfff'))
 # Incluir la siguiente variable solo cuando PostgreSQL TLS esté provisionado:
 $env:RUN_PG_INTEGRATION = '1'
-.\backend\.venv\Scripts\python.exe -m pytest -c backend/pyproject.toml backend/tests tests -q -W error --basetemp $testRun
+# Con permisos F004B provisionados para la cola sintética:
+$env:RUN_RABBIT_INGESTION = '1'
+.\backend\.venv\Scripts\python.exe -m pytest -c backend/pyproject.toml backend/tests tests -q -W error -p no:cacheprovider --basetemp $testRun
 .\backend\.venv\Scripts\python.exe -m ruff check --config backend/pyproject.toml backend scripts tests
 .\backend\.venv\Scripts\python.exe -m ruff format --check --config backend/pyproject.toml backend scripts tests
 .\backend\.venv\Scripts\python.exe -m mypy --config-file backend/pyproject.toml backend/src/document_platform scripts
@@ -129,3 +134,17 @@ conservadas: no se ejecuta DROP ni se eliminan datos automáticamente.
 
 No hay imágenes publicadas, Compose ni despliegue final. La publicación requiere
 registro y autorización expresa.
+
+## Comprobación adicional F004B
+
+El ingreso es un proceso separado de la API; arrancar ambos como explica
+[la guía UFM](ingestion-local.md). Los ejemplos de cola/lectura de F002B no
+consumen la cola documental. Las pruebas de ingestión verifican protocolo Celery,
+confirmaciones, ausencia de ruta, denegación de consumo operativo, movimientos,
+recuperación, permisos por fondo y límites reales del parser. Una base sintética
+nunca publica en la cola operativa. No ejecutar una purga para dejar una prueba vacía.
+
+La prueba negativa de PostgreSQL usa un almacén TLS aislado: la CA autorizada en
+Windows no debe convertir una conexión de prueba sin esa CA en un falso positivo.
+La exclusión general de `storage/` conserva excepciones para el código Python del
+adaptador; los datos operativos permanecen ignorados.

@@ -147,8 +147,8 @@ class IdentityRepository:
     def audit(self, entry: Audit) -> None:
         self.connection.execute(
             """INSERT INTO identity.audit_logs
-            (id,actor_id,action,resource_id,outcome,occurred_at,reason,subject_hash)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
+            (id,actor_id,action,resource_id,outcome,occurred_at,reason,subject_hash,fonds_id)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
             (
                 entry.id,
                 entry.actor_id,
@@ -158,14 +158,17 @@ class IdentityRepository:
                 entry.occurred_at,
                 entry.reason,
                 entry.subject_hash,
+                entry.fonds_id,
             ),
         )
 
-    def list_audit(self, limit: int, offset: int) -> list[Audit]:
+    def list_audit(self, limit: int, offset: int, scope_user_id: UUID | None = None) -> list[Audit]:
         rows = self.connection.execute(
-            "SELECT * FROM identity.audit_logs "
+            "SELECT * FROM identity.audit_logs a WHERE "
+            "(%s::uuid IS NULL OR a.fonds_id IS NULL OR EXISTS "
+            "(SELECT 1 FROM ingestion.user_fonds f WHERE f.fonds_id=a.fonds_id AND f.user_id=%s)) "
             "ORDER BY occurred_at DESC,id DESC LIMIT %s OFFSET %s",
-            (limit, offset),
+            (scope_user_id, scope_user_id, limit, offset),
         ).fetchall()
         return [Audit(**row) for row in rows]
 

@@ -94,6 +94,11 @@ class Settings(BaseSettings):
     web_dist_dir: Path = Field(
         default_factory=lambda: Path(__file__).resolve().parents[3] / "frontend" / "dist"
     )
+    storage_root: Path = Path(".local/documents")
+    intake_max_pages: int = Field(default=5000, ge=1, le=50000)
+    intake_parser_seconds: int = Field(default=30, ge=1, le=120)
+    intake_parser_memory_mb: int = Field(default=512, ge=128, le=2048)
+    intake_batch_limit: int = Field(default=1000, ge=1, le=10000)
     dependency_timeout_seconds: int = Field(default=3, ge=2, le=10)
     log_level: str = Field(default="INFO", pattern=r"^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")
 

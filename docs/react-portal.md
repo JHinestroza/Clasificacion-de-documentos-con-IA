@@ -1,8 +1,10 @@
 # Portal React local
 
 La interfaz de F004A utiliza los usuarios y permisos F003: login/logout, cuentas,
-autorizaciones, auditoría y cambio de contraseña propia. Todavía no ingresa PDF ni
-publica trabajos. Los archivos permanecen bajo la cuenta Windows Usuario.
+autorizaciones, auditoría y cambio de contraseña propia. F004B añade
+[Ingreso de documentos](ingestion-local.md), con PDF por carpeta, lotes y publicación
+de trabajos. La extracción y los metadatos siguen pendientes. Los archivos permanecen
+bajo la cuenta Windows Usuario.
 
 ## Compilar y ejecutar
 

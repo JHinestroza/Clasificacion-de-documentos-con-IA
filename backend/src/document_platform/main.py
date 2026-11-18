@@ -7,6 +7,7 @@ from starlette.concurrency import run_in_threadpool
 
 from document_platform.api.health import health_router
 from document_platform.api.identity import CSRF_COOKIE, SESSION_COOKIE, identity_router
+from document_platform.api.ingestion import ingestion_router
 from document_platform.api.security import RequireHTTPS
 from document_platform.api.web import WebSecurityHeaders, attach_web
 from document_platform.application.identity.service import IdentityService
@@ -15,6 +16,7 @@ from document_platform.config import Settings
 from document_platform.domain.identity.models import IdentityError
 from document_platform.identity_runtime import build_identity_service
 from document_platform.infrastructure.tls import api_ssl_context
+from document_platform.ingestion_runtime import build_ingestion_service
 
 
 def create_app(
@@ -65,6 +67,9 @@ def create_app(
         )
 
     app.include_router(identity_router(identity, settings))
+    app.include_router(
+        ingestion_router(build_ingestion_service(settings, identity), identity, settings)
+    )
     app.add_middleware(RequireHTTPS)
     app.add_middleware(WebSecurityHeaders)
     attach_web(app, settings)

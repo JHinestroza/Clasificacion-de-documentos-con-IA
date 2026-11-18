@@ -1,222 +1,179 @@
-# F004B propuesta — Ingreso de PDF desde carpetas
+# F004B — Ingreso recuperable de PDF por carpetas
 
-- Estado: propuesta concreta para consulta; no implementada ni aprobada.
-- Fecha: 2026-11-13.
+- Estado: implementada y verificada.
 - Rama: `feature/ingestion-carpetas`, creada desde `develop` (`21f6cf8`).
-- Continúa F004A y actualiza la preparación conservada en `feature/ingestion-operacion`.
+- Alcance aprobado expresamente: 2026-11-13. Primer fondo: **UFM**.
+- Revisión visual: 2026-11-13. Verificación de cierre: 2026-11-18.
+- El nombre histórico del archivo conserva los enlaces de la propuesta aprobada.
 
-## Problema y resultado previsto
+## Resultado y alcance
 
-El portal ya permite iniciar sesión, pero no existe un buzón operativo ni una
-función que registre PDF o publique sus trabajos. Esta entrega permitirá depositar
-archivos completos en una carpeta, elegir el fondo, iniciar un lote y comprobar
-admisiones, omisiones, fallos e historial real. Un PDF admitido quedará en
-`processing`, con publicación persistida y confirmada en RabbitMQ cuando esté disponible.
+El portal React ahora permite elegir un fondo autorizado, ver su carpeta de ingreso,
+iniciar un lote y consultar estados, búsqueda, filtros e historial paginado.
+Los controles de pausa/reanudación/detención registran actor, fecha y motivo.
+El ingreso es un proceso Python independiente de la API y del navegador, dentro de
+la misma aplicación modular. No es un worker Celery en Windows.
 
-Esta fase termina en el estado **En cola**. No promete extracción de texto,
-metadatos ni archivos en `success`. La confirmación del broker no acredita ejecución.
-El worker Celery Linux y Docker siguen diferidos a la feature final; las reglas de
-extracción y metadatos se desarrollarán en F005/F006 con fixtures controladas.
+Una entrega completa se reclama y mueve físicamente desde `incoming` a `processing`
+con intención persistida. Los PDF admitidos crean documento, primer intento, evento
+y outbox en una transacción PostgreSQL; después se publican por AMQPS con contrato
+Celery v2. La confirmación deja el trabajo **En cola**. No acredita extracción ni
+metadatos completados y no mueve el PDF a `success`.
 
-## Decisiones que se conservan
+Las entradas inválidas conservan contenido y causa en `failed`; los códigos ya
+registrados conservan la nueva entrega en `skipped`. La historia no se elimina.
+Un archivo cambiado, una ruta insegura o un destino conflictivo se conservan para
+revisión, sin sobrescribir bytes ni publicar ese contenido como válido.
 
-React/TypeScript sobre FastAPI HTTPS, PostgreSQL, RabbitMQ/Celery, sesiones y CSRF
-F003, outbox e idempotencia del ADR 0001. No se vuelven a consultar estas decisiones.
-Se preservan ramas anteriores, secretos en `.env` y archivos propiedad de Usuario.
+## Decisiones y reglas implementadas
 
-`CAB01.pdf` y `CAB02.pdf` producen códigos CAB01/CAB02 conservando ceros. Máximo:
-100 MB, equivalentes a 100 000 000 bytes por PDF. Los controles son por lote.
-`success` exige metadatos terminados. Retirar un fallido no borra el PDF ni su historial.
+- React/TypeScript sobre FastAPI HTTPS, PostgreSQL TLS verify-full y RabbitMQ AMQPS
+  verificado. Se conservan la CA autorizada, sesiones opacas y CSRF de F003/F004A.
+- Raíz privada `.local/documents`, configurable mediante `APP_STORAGE_ROOT`; por
+  fondo se crean `incoming`, `processing`, `failed`, `success` y `skipped`.
+- Un volumen gestionado, nombres internos UUID y publicación sin sobrescritura.
+  El navegador selecciona un fondo, nunca una ruta arbitraria del host.
+- Depósito completo `.part` → `.pdf`; el ayudante copia/verifica y conserva el
+  original externo. El ingreso posterior sí retira el PDF de su ubicación gestionada.
+- Código completo sin extensión, ASCII y mayúsculas: CAB01.pdf/cab01.PDF → CAB01,
+  conservando ceros. Código único global; letras/números/guion/guion bajo, 1–64
+  caracteres y comienzo alfanumérico. Nombres ajenos a esa regla se rechazan.
+- SHA-256 para integridad; contenido idéntico con códigos distintos se admite y
+  advierte dentro del fondo, sin revelar información documental ajena.
+- Máximo de 100 000 000 bytes por PDF; lote inicial limitado a 1 000 candidatos.
+  pypdf 7.1.0 valida estructura/páginas en proceso hijo sin extracción ni renderizado.
+  PDF con contraseña, exceso de páginas y límites alcanzados conservan su causa.
+- Límites configurables de pruebas: 5 000 páginas, 30 segundos y 512 MiB. El padre
+  aplica timeout; el hijo aplica un plazo independiente y límites OS de CPU/memoria.
+  Se verificó que también termina si su padre sale. No se presenta como sandbox
+  completo ni certificación de ausencia de malware.
+- Iniciar toma una lista finita. Pausar/Detener terminan la admisión iniciada;
+  reanudar continúa el lote pausado y detener conserva pendientes para otro lote.
+  Los mensajes ya publicados no se purgan ni cancelan por esos controles.
 
-## Flujo del operador propuesto
+## Persistencia, permisos y recuperación
 
-1. El superusuario configura el fondo y concede acceso explícito a sus operadores.
-   El nombre del primer fondo está consultado; a falta de nombre solo se preparará
-   el fondo ficticio PRUEBAS para comprobar la implementación.
-2. La nueva vista **Ingreso de documentos** muestra el fondo y la ruta exacta de
-   su buzón. El navegador selecciona un ID autorizado, nunca una ruta arbitraria.
-3. Depositar cada PDF completo en `incoming`. Para evitar leer copias a medias,
-   copiar con extensión `.part` y renombrar a `.pdf` al finalizar. Un ayudante local
-   de depósito hará esos pasos, verificará tamaño/hash y conservará el original
-   externo. Un tamaño estable por sí solo no demuestra que terminó la copia.
-4. Pulsar **Iniciar lote** toma una lista finita de entregas completas. Archivos
-   que lleguen después se conservan para otro lote; no se activa vigilancia continua.
-5. La interfaz muestra código, nombre, estado, causa pública e historial. El ingreso
-   mueve cada archivo admitido a `processing` mediante registro recuperable.
-6. **Pausar** deja terminar la admisión iniciada y bloquea la siguiente; **Reanudar**
-   continúa el mismo lote. **Detener** cierra el lote después de esa admisión y
-   conserva los candidatos pendientes en `incoming` para un lote posterior.
-   Ningún botón purga RabbitMQ ni cancela instantáneamente un trabajo ya publicado.
+Migración aditiva `0002_ingestion`: fondos, concesiones de fondo, lotes, entradas,
+documentos, trabajos/intentos, eventos, movimientos y outbox; fondo opcional en la
+auditoría existente. No hay DROP/reset ni migraciones automáticas al arrancar la API.
+La base principal y UFM se aprovisionaron por TLS con las herramientas explícitas.
 
-Ruta inicial propuesta en `.env`, fuera de Git: `APP_STORAGE_ROOT=.local/documents`.
-Todos los directorios gestionados comparten volumen; se rechazan enlaces/reparse
-points. Una ubicación distinta debe estar cifrada y ser accesible por Usuario.
-El nombre visible del fondo es independiente de su clave interna de almacenamiento.
+El backend comprueba sesión, acción y ámbito en la misma transacción que la mutación.
+Solo el superusuario administra fondos/concesiones. Un usuario sin ámbito no puede
+consultar IDs/listas/eventos ajenos. `failed.read` sin `documents.read` fuerza lectura
+solo de fallidos. La revocación impide nuevas admisiones; un operador autorizado
+puede reanudar y queda registrado el relevo. Las concesiones guardan actor, usuario
+afectado, fondo, fecha y motivo. `audit.read` no evita el filtro de fondo.
 
-```text
-.local/documents/<clave-fondo>/
-  incoming/     PDF completos pendientes de admitir; .part se ignora
-  processing/   PDF admitidos, publicación pendiente o en cola
-  failed/       entradas inválidas/fallidas, con causa e historial
-  success/      reservado al procesamiento de metadatos completado
-  skipped/      nuevas entregas omitidas por código ya existente
-```
+El rol SQL de ejecución no administra base/roles/esquema. Fondos y documentos
+canónicos son SELECT/INSERT; estados mutables permiten las actualizaciones necesarias.
+Eventos/auditoría son append-only para ese rol; no tiene DELETE/TRUNCATE ni CREATE.
+Se eliminan permisos PUBLIC sobre las tablas nuevas.
 
-Los destinos internos usan UUID; el nombre original solo es dato autorizado.
-`skipped` evita mezclar una entrega duplicada con errores reencolables y evita
-escanearla sin fin. No se reemplazan archivos existentes ni se borran originales
-mientras el destino no esté publicado y verificado. Un fallo de broker mantiene
-el PDF en `processing` y el outbox pendiente; no lo clasifica como PDF inválido.
+Cada movimiento registra intención antes de tocar los archivos y se reconcilia tras
+reinicio comprobando identidad/integridad. Un bloqueo asesor de proceso evita pasos
+simultáneos de ingreso en la misma base, sin mantener el bloqueo de seguridad
+mientras se analiza un PDF o se espera al broker.
 
-## Reglas nuevas propuestas para confirmar en conjunto
+Outbox usa IDs estables, lease recuperable y reintentos progresivos. Tras diez fallos
+consecutivos queda bloqueado; reintentar publicación requiere permiso, fondo y motivo.
+Una caída después de confirmar en RabbitMQ y antes de registrar en SQL puede repetir
+el mismo mensaje; el futuro consumidor deberá ser idempotente. No se crea otro
+documento/primer intento por esa repetición.
 
-- Código único global, insensible a mayúsculas ASCII: cab01.pdf y CAB01.pdf
-  representan CAB01. Conservar el nombre/código original como metadato; no quitar
-  ceros ni truncar/simplificar nombres. Para esta primera versión aceptar letras
-  ASCII, números, guion y guion bajo; de 1 a 64 caracteres, empezando por letra/número.
-  Otros nombres se registran como no válidos, sin inventarles un código.
-- Un mismo SHA-256 con códigos diferentes genera advertencia con acceso por fondo;
-  no se omite automáticamente. Nunca revelar datos de otro fondo al informar un duplicado.
-- PDF cifrados con contraseña quedan fallidos con motivo acotado; no recolectar
-  contraseñas documentales en esta fase. La conexión y disco siguen cifrados.
-- Validación inicial con pypdf en proceso hijo sin extracción/renderizado. Límites
-  propuestos de pruebas: 5 000 páginas, 30 segundos y 512 MiB por proceso, además
-  de los 100 MB acordados. Deben ser configurables y medidos; no son dimensionamiento
-  institucional. Fallos/avisos del parser no se vuelcan crudos a logs ni al navegador.
-- No abrir ni servir el contenido PDF desde el portal en esta entrega.
-- Creación de fondos y concesión/revocación de acceso: solo superusuario. Un usuario
-  ordinario necesita permiso de acción **y** acceso al fondo en cada consulta/comando.
-  La revocación impide nuevas admisiones; el trabajo ya admitido conserva su historia.
+## RabbitMQ aplicado
 
-## Cambios de base de datos propuestos, sin aplicar
+Se conservó `document_platform.integration` y se habilitaron únicamente exchange
+`document_platform.tasks`, cola `document_platform.processing` y cola separada
+`document_platform.ingestion_test`. Configure/write se limitan a estos recursos;
+read solo incluye tasks/integration/ingestion_test. El productor no puede consumir
+ni purgar processing. No recibió etiquetas administrativas ni credenciales nuevas.
 
-Migración aditiva `0002_ingestion`, sin DROP, reset ni privilegios administrativos
-para la API. Las tablas estarán en el esquema `ingestion`:
+La configuración anterior y su hash de contraseña se conservaron. El CLI local no
+autenticó con la cookie del servicio; no se leyó ni copió esa cookie. Tras cancelar
+el primer UAC, el responsable autorizó volver a mostrarlo y se aplicó el reinicio.
+No se purgaron/borraron colas, ni se rotaron contraseñas/certificados. Las bases de
+prueba nunca publican en la cola operativa.
 
-| Tabla | Contenido y restricción principal |
+## Archivos de la entrega
+
+| Archivos | Función |
 | --- | --- |
-| `fonds` | UUID, nombre, clave de almacenamiento única e inmutable y activo. |
-| `user_fonds` | Usuario/fondo únicos; concesión/revocación auditadas. |
-| `batches` | Fondo, actor, estado/control, lista de candidatos y fechas. |
-| `intake_items` | Cada entrega, incluso omitida/inválida; nombre, código original/normalizado, tamaño/hash y causa. |
-| `documents` | UUID canónico, código único global, fondo y referencia relativa al PDF. |
-| `jobs` | Documento, intento único y estado; el primer intento no se duplica por carreras. |
-| `events` | Historia de cambios con causa acotada, fecha y actor/correlación. |
-| `file_moves` | Intención, origen/destino relativos, integridad y etapa del movimiento recuperable. |
-| `outbox` | Evento/tarea estable, intentos, próxima publicación, lease y confirmación. |
+| `domain/ingestion/`, `application/ingestion/` | Reglas, autorización, controles y orquestación recuperable. |
+| `infrastructure/persistence/ingestion.py`, migración 0002 y `identity_admin.py` | SQL parametrizado, historia, outbox y grants mínimos. |
+| `infrastructure/storage/`, `pdf_probe.py` | Depósito/movimientos privados y parser con límites. |
+| `infrastructure/messaging/intake.py` | Contrato Celery, confirmaciones y detección de ausencia de ruta. |
+| `ingestion_runtime.py`, `config.py`, `api/ingestion.py` | Composición, comandos locales, ajustes y HTTP. |
+| Ajustes de identidad/auditoría | Reutilizar la sesión en la transacción del recurso y filtrar por fondo. |
+| `frontend/src/pages/Intake.tsx`, contratos, navegación y CSS | Ingreso real, administración de fondos y estados adaptables. |
+| `scripts/*ingestion*rabbitmq*` | Ampliación explícita y repetible de permisos locales. |
+| Pruebas backend/React, `.gitignore`, snapshots y documentación | Evidencia y entrega reproducible. |
 
-Documento, intento, evento y outbox se confirman en una transacción. El movimiento
-físico se coordina mediante intención persistida y reconciliación; no existe una
-transacción distribuida entre archivos, SQL y RabbitMQ. Repetir el publicador después
-de una caída puede repetir un mensaje con el mismo ID; el futuro consumidor debe
-ser idempotente. Una carrera de códigos no crea otro documento canónico.
+La excepción específica de `.gitignore` incluye los módulos Python del adaptador
+`infrastructure/storage`; los datos de almacenamiento permanecen ignorados.
+Las claves y `.env` no se incluyen en Git ni en artefactos web.
 
-Agregar fondo opcional a la auditoría F003 y filtrar los eventos documentales por
-alcance. `audit.read` por sí solo no permite leer eventos de otros fondos. La auditoría
-general existente conserva su comportamiento. Sesión, permiso, ámbito y mutación
-se comprueban dentro de la misma transacción, incluyendo revocaciones concurrentes.
+## Verificaciones reales
 
-Grants de ejecución propuestos: SELECT/INSERT/UPDATE solo donde se cambia estado;
-SELECT/INSERT para historia y auditoría, sin UPDATE/DELETE/TRUNCATE; membresías
-permiten retirar la concesión conservando su evento. Sin CREATE/DROP de runtime.
+- **189 pruebas backend pasaron** el 2026-11-18, con PostgreSQL/RabbitMQ locales
+  reales por TLS y PDF ficticios. Sin omisiones, con advertencias como errores y
+  cacheprovider deshabilitado para no tocar cachés antiguas de otras cuentas.
+- Se verificaron códigos, bytes exactos al mover, depósito completo, destino ocupado,
+  cambios de archivo, traversal, junction Windows real y lector frente a escritor activo.
+- Límite exacto 100 MB, estructura inválida, PDF con contraseña, páginas, memoria,
+  CPU y salida del padre del parser. El hijo mantiene su propio límite temporal.
+- Lotes reales, pausa durante validación, parada conservando pendientes y nuevo lote;
+  reinicios tras mover y tras publicar conservan IDs y no duplican documentos/intentos.
+- Broker no disponible, publicación sin ruta real, contrato Celery y persistencia,
+  ACK solo de mensajes sintéticos propios y rechazo real de consumir processing.
+- Dos ámbitos/roles, revocación, historial y lectura limitada a fallidos; SQL niega
+  alterar historia, códigos/clave del fondo o crear tablas. Sesión/CSRF/Origin se
+  mantienen. La prueba negativa de CA usa confianza aislada, ya que Windows confía
+  legítimamente en la CA de desarrollo aprobada.
+- **24 pruebas React pasaron** el 2026-11-18; build/TypeScript, ESLint, Prettier y
+  npm audit correctos, con cero vulnerabilidades reportadas. Ruff, mypy estricto
+  (54 módulos/scripts) y pip check correctos. El contrato OpenAPI declara la cookie
+  obligatoria; la prueba HTTP focalizada volvió a pasar después de esa anotación.
+- Revisión real HTTPS el 2026-11-13: superusuario, operador UFM y lector sin fondo.
+  Inicio, pausa/reanudación con motivos, detención y nuevo lote, búsqueda, filtros,
+  formularios de fondos/concesiones sin guardar y cierre de todas las sesiones de prueba.
+- El operador vio un lote mixto: un PDF en cola, uno fallido y uno omitido. La lista
+  y el detalle se actualizan juntos después de un control; se corrigió y probó esa
+  discrepancia visual. Un lector sin fondo no recibió documentos ni controles ajenos.
+- Escritorio 1280×900 y móvil 390×844: ancho de página 375 px en móvil, tabla con
+  desplazamiento interno (298/650 px), sin ensanchar la página. Overrides restablecidos.
+- Captura JPEG de datos sintéticos, propietaria Usuario, en `.local/feature-evidence/F004B/`;
+  SHA-256 `B9F109A10C4BCAB858CF930B063B4201D1DE1EF1512699AD83984AD657F12589`.
+  Se conservan bases, PDF y mensajes sintéticos identificados; no hubo DROP ni purga.
 
-## Procesos y RabbitMQ propuestos
+## Operación, límites y pendientes
 
-Conservar FastAPI y añadir un proceso local independiente de ingreso dentro del
-mismo paquete Python: recibe comandos persistidos, valida, mueve, recupera y publica.
-Cerrar el navegador no destruye el lote. No es un worker Celery Windows.
+[Guía UFM](../ingestion-local.md), [contrato](../api/F004B-openapi.json) y
+[ADR 0006](../decisions/0006-ingestion-operation-proposal.md) describen operación y decisión.
+Los archivos de prueba, claves y evidencia siguen fuera de Git y bajo Usuario.
+La API temporal 8444 se cerró verificando PID/propietario/comando/fecha, sin detener
+otros procesos. El portal operativo utiliza HTTPS 8443.
 
-Tarea versionada `document_platform.process_document.v1`, JSON persistente con IDs
-estables de evento, documento, intento, lote y fondo, versión y correlación. El mensaje
-no contiene PDF, texto, prompts, contraseñas ni rutas absolutas. Usar AMQPS verificado,
-confirmaciones y detección de ausencia de ruta; no marcar en cola ante fallo incierto.
+F004B termina en cola. Sin OCR/extracción, IA, metadatos completos, visualizador PDF,
+carga web de 100 MB, vigilancia continua, reencolado/retirada de fallidos ni dashboard
+avanzado. `success` sigue reservado. Docker y Celery Linux permanecen en la feature final.
 
-| Recurso | Propósito |
-| --- | --- |
-| `document_platform.integration` | Conservar sin cambios el probe anterior. |
-| `document_platform.tasks` | Exchange durable para tareas. |
-| `document_platform.processing` | Cola durable operativa, sin consumo en esta fase. |
-| `document_platform.ingestion_test` | Cola sintética separada con routing key propia. |
+El parser no sustituye aislamiento/antimalware. El almacenamiento y la base de datos
+no forman una transacción distribuida; los conflictos de identidad quedan bloqueados
+para revisión. Un único volumen es el alcance verificado. La PKI institucional,
+volúmenes/respaldos cifrados, retención y operación Linux requieren su propia evidencia.
+No hay código, imágenes, tags ni releases publicados remotamente.
 
-Ampliar solo permisos exactos de estos recursos en el vhost de la aplicación, sin
-etiquetas administrativas. Configure/write limitados a esas entidades; read permite
-el exchange para bind y las colas integration/ingestion_test para pruebas. El productor
-no recibe read de `processing`, por lo que no puede consumir ni purgar esa cola.
-No usar regex globales, borrar/purgar colas ni mezclar IDs de bases de prueba con
-la cola operativa. Los permisos de un futuro consumidor se definirán con F005/final.
 
-## Interfaz y API previstas
+## Puesta en marcha local del 2026-11-18
 
-Añadir **Ingreso de documentos** al portal React actual: selector de fondo autorizado,
-ruta del buzón, acciones de lote, conteos de estados persistidos, búsqueda, filtros,
-paginación y detalle de eventos. Un estado sin datos muestra su vacío; no usar números
-simulados ni porcentajes de OCR. Administrar fondos/accesos será una sección exclusiva
-para el superusuario. Reutilizar cookies, CSRF, sanitización y protección de navegación.
+Se volvió a comprobar la revisión `0002_ingestion`, UFM y la conexión AMQPS. La
+base operativa no contiene lotes de prueba: los fixtures están en bases separadas.
+Las cinco carpetas UFM pertenecen a BIB-30\Usuario; la raíz tiene ACL protegida
+con Usuario, SYSTEM y Administradores, sin concesiones amplias.
 
-Contratos nuevos en `/api/v1/ingestion`: fondos visibles, administración de fondos y
-concesiones, creación/listado/detalle de lotes, comandos pause/resume/stop y consultas
-paginadas de entradas/eventos. Mutaciones con CSRF y razones para concesiones/controles.
-Permisos existentes: `processing.start` para iniciar/reanudar, `processing.pause`,
-`processing.stop`, `documents.read`, `failed.read` y `audit.read`, siempre con ámbito.
-Los botones de retry/dismiss se mantienen fuera del alcance hasta F005/F007.
-
-## Archivos previstos y alternativas
-
-- `domain/ingestion/`, `application/ingestion/`: reglas, casos de uso y puertos.
-- `infrastructure/persistence/ingestion.py`, `storage/`, adaptador PDF/publicador:
-  SQL, movimientos, límites y outbox, separados de HTTP.
-- `api/ingestion.py`, composición, entry point y configuración central validada.
-- `backend/migrations/versions/0002_ingestion.py`, aprovisionamiento y grants.
-- Ajuste acotado de identidad/auditoría para permisos y alcance transaccionales.
-- `frontend/src/pages/`, contratos y navegación: interfaz sobre el HTTPS existente.
-- Preparador explícito de topología/permisos broker, fixtures, contratos y guías.
-
-Se recomienda ingreso por carpeta y lotes por ser el flujo acordado y verificable
-ahora. Un cargador web con archivos de hasta 100 MB agregaría streaming, cuotas y
-recuperación de cargas; puede añadirse después si se necesita. Vigilancia continua,
-SSE/WebSocket y múltiples volúmenes gestionados quedan para una ampliación concreta.
-
-## Riesgos y comprobaciones de aceptación pendientes
-
-- Copia incompleta/ocupada, cambio de archivo durante lectura, traversal, reparse
-  points y destino ocupado: no publicar bytes distintos ni sobrescribir archivos.
-- PDF sintético válido CAB01: un documento, primer intento y mensaje confirmado;
-  CAB02: otro; código repetido: una omisión auditada con PDF preservado.
-- Límite de 100 MB, formato/estructura/páginas, PDF cifrado y timeout/memoria del parser.
-  El parser no certifica ausencia de malware; solo usar documentos sintéticos.
-- Reinicios entre registrar intención, mover y confirmar SQL/outbox: reconciliar
-  contenido e historial sin duplicar documentos ni perder entregas.
-- Broker caído, sin ruta o caída después del confirm: conservar publicación pendiente
-  o repetible con IDs estables; nunca publicar metadatos válidos ficticios.
-- Inicio/pausa/reanudación/detención reales, entrega posterior reservada al próximo
-  lote, pendientes conservados y recuperación aunque se cierre el navegador.
-- Dos usuarios/fondos: denegar IDs, listados, comandos y auditoría ajenos; revocación
-  efectiva y backend resistente a llamadas directas. Mantener regresión F003/F004A.
-- UI escritorio/móvil, teclado, estados vacíos/errores y datos reales del backend.
-- HTTPS/API, SQL verify-full y AMQPS verificados; controles negativos de CA/hostname.
-- Pruebas reales PostgreSQL y cola sintética aislada, lint/tipos/build y escaneo de
-  secretos. Bases y evidencia sintéticas conservadas, sin DROP ni purga.
-
-## Evidencia actual y autorización necesaria
-
-En esta preparación se inspeccionaron código, requisitos y propuesta previa y se
-consultaron fuentes primarias. Solo se redactó el alcance y ADR; no se crearon buzones,
-no se cambiaron `.env`, SQL ni RabbitMQ y no se movieron/leyeron PDF institucionales.
-Enlaces locales, exclusión de secretos, diff y propietarios comprobados: correctos.
-No se repitieron pruebas de runtime: no cambió código; las pruebas funcionales
-de ingestión aún no existen ni se ejecutaron.
-Las comprobaciones funcionales anteriores siguen pendientes y no acreditan esta feature.
-
-La consulta nueva es el esquema/ámbito, reglas adicionales y grants concretos de
-esta entrega. [AGENTS.md](../../AGENTS.md) exige: “Consult new architecture, security,
-authentication, database, infrastructure or scope decisions.” Se mantiene la propuesta
-sin integrar en `develop` hasta implementar y verificar el alcance que se apruebe.
-
-## Referencias
-
-- [ADR 0006 propuesto](../decisions/0006-ingestion-operation-proposal.md).
-- [Requisitos](../requirements.md), [pendientes](../open-questions.md).
-- [pypdf: PdfReader y límites del lector](https://pypdf.readthedocs.io/en/stable/modules/PdfReader.html).
-- [RabbitMQ: confirma publicación frente a consumo](https://www.rabbitmq.com/docs/confirms).
-- [RabbitMQ: permisos por operación](https://www.rabbitmq.com/docs/access-control).
-- [Celery: plataformas soportadas](https://docs.celeryq.dev/en/stable/getting-started/introduction.html).
+API e ingreso quedaron iniciados como procesos de Usuario. El shell, health y ready
+respondieron 200 mediante `ssl.create_default_context()` con verificación normal
+de cadena/hostname; ready reportó PostgreSQL y broker disponibles. Los PID/fechas
+se guardan privadamente para distinguirlos de otros Python. No se reiniciaron
+PostgreSQL/RabbitMQ en este cierre ni se borraron documentos o mensajes.

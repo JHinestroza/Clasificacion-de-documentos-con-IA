@@ -1,0 +1,1 @@
+"""Recoverable document intake module."""

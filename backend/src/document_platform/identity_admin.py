@@ -129,6 +129,39 @@ def initialize_database(settings: DatabaseAdminSettings) -> None:
                 "REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER ON identity.audit_logs FROM {}"
             ).format(role_name)
         )
+    with connect_database(settings, admin=True) as connection:
+        role_name = sql.Identifier(settings.db_user)
+        connection.execute("REVOKE ALL ON SCHEMA ingestion FROM PUBLIC")
+        connection.execute("REVOKE ALL ON ALL TABLES IN SCHEMA ingestion FROM PUBLIC")
+        connection.execute(sql.SQL("REVOKE ALL ON SCHEMA ingestion FROM {}").format(role_name))
+        connection.execute(
+            sql.SQL("REVOKE ALL ON ALL TABLES IN SCHEMA ingestion FROM {}").format(role_name)
+        )
+        connection.execute(sql.SQL("GRANT USAGE ON SCHEMA ingestion TO {}").format(role_name))
+        for table in (
+            "batches",
+            "intake_items",
+            "jobs",
+            "file_moves",
+            "outbox",
+        ):
+            connection.execute(
+                sql.SQL("GRANT SELECT,INSERT,UPDATE ON ingestion.{} TO {}").format(
+                    sql.Identifier(table), role_name
+                )
+            )
+        for immutable_table in ("fonds", "documents"):
+            connection.execute(
+                sql.SQL("GRANT SELECT,INSERT ON ingestion.{} TO {}").format(
+                    sql.Identifier(immutable_table), role_name
+                )
+            )
+        connection.execute(
+            sql.SQL("GRANT SELECT,INSERT ON ingestion.events TO {}").format(role_name)
+        )
+        connection.execute(
+            sql.SQL("GRANT SELECT,INSERT,DELETE ON ingestion.user_fonds TO {}").format(role_name)
+        )
     with connect_database(settings) as connection:
         connection.execute("SELECT id FROM identity.users LIMIT 1")
 

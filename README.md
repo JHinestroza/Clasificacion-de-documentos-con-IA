@@ -4,9 +4,10 @@ Plataforma institucional para ingresar PDF con OCR, procesarlos de forma asíncr
 generar metadatos configurables y conservar trazabilidad del procesamiento y los fallos.
 
 El backend local dispone de HTTPS, cuentas locales, permisos y auditoría persistida
-en PostgreSQL con TLS. RabbitMQ está integrado para pruebas sintéticas. La ingestión,
-el procesamiento documental siguen pendientes. F004A incorpora un portal React
-para cuentas y auditoría, verificado por HTTPS con cuentas sintéticas.
+en PostgreSQL con TLS. RabbitMQ está integrado por AMQPS. F004A incorpora un portal React
+para cuentas y auditoría. F004B añade ingreso por carpetas para UFM, lotes con
+controles, movimientos recuperables, estados e historial y publicación por AMQPS.
+La extracción de texto y los metadatos siguen pendientes.
 Docker se ha diferido a una feature final.
 
 ## Desarrollo por features
@@ -34,7 +35,10 @@ acordados. Las publicaciones remotas requieren autorización expresa.
 - [Arrancar y probar usuarios por HTTPS](docs/identity-local.md).
 - [F004A: portal React](docs/features/F004A-react-portal.md).
 - [Compilar y utilizar el portal](docs/react-portal.md).
-- [Contrato OpenAPI](docs/api/F003-openapi.json).
+- [F004B: ingreso recuperable por carpetas](docs/features/F004B-ingestion-carpetas-proposal.md).
+- [Operar UFM y sus carpetas](docs/ingestion-local.md).
+- [Contrato OpenAPI actual](docs/api/F004B-openapi.json).
+- [Contrato de la entrega F003](docs/api/F003-openapi.json).
 - [Desarrollo y verificación local](docs/development.md).
 - [Arquitectura y patrones actuales](docs/architecture.md).
 - [ADR aprobado: mensajería](docs/decisions/0001-messaging.md).
@@ -59,3 +63,11 @@ predeterminadas. Consulte la guía de desarrollo para arrancar HTTPS.
 
 No incorporar documentos institucionales reales, credenciales, claves privadas ni
 volcados de base de datos al repositorio. Las pruebas utilizarán datos sintéticos.
+
+## Ingresar PDF de prueba
+
+Consultar [Ingreso local — UFM](docs/ingestion-local.md). Arrancar API y proceso
+de ingreso, depositar PDF completos en `.local/documents/UFM/incoming` y pulsar
+**Iniciar lote** en [el portal HTTPS](https://localhost:8443/#ingreso). `En cola`
+no equivale a metadatos completados; `success` se reserva para esa etapa futura.
+El ayudante de depósito prepara `.part` y publica `.pdf` sin sobrescribir archivos.
