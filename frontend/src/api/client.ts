@@ -1,11 +1,19 @@
-import type { AuditEntry, Readiness, User } from "./models";
+import type {
+    AuditEntry,
+    Readiness,
+    User,
+    Fonds,
+    IntakeBatch,
+    IntakeItem,
+    IntakeEvent,
+} from "./models";
 
 const messages: Record<number, string> = {
     0: "No pudimos conectar. Revisa la conexión e inténtalo de nuevo.",
     400: "Revisa los datos de la operación.",
     401: "No se pudo validar el acceso. Comprueba tus credenciales o inicia sesión de nuevo.",
     403: "Tu cuenta no tiene permiso para esta acción o la solicitud caducó.",
-    409: "La operación entra en conflicto con el estado actual. Revisa la cuenta y vuelve a intentarlo.",
+    409: "La operación entra en conflicto con el estado actual. Revisa el estado y vuelve a intentarlo.",
     422: "Revisa los campos indicados e inténtalo de nuevo.",
     429: "Se alcanzó el límite temporal de intentos. Espera antes de volver a intentarlo.",
     503: "El servicio no está disponible en este momento. Inténtalo más tarde.",
@@ -72,6 +80,72 @@ function audit(value: unknown): AuditEntry {
     };
 }
 
+function number(value: unknown): number {
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0)
+        throw new ApiError(502);
+    return value;
+}
+function fonds(value: unknown): Fonds {
+    const r = object(value);
+    if (typeof r.active !== "boolean") throw new ApiError(502);
+    return {
+        id: text(r.id),
+        name: text(r.name),
+        storage_key: text(r.storage_key),
+        active: r.active,
+        incoming_path:
+            r.incoming_path === null || r.incoming_path === undefined
+                ? null
+                : text(r.incoming_path),
+    };
+}
+function batch(value: unknown): IntakeBatch {
+    const r = object(value),
+        counts: Record<string, number> = {};
+    if (r.counts !== undefined)
+        for (const [key, value] of Object.entries(object(r.counts)))
+            counts[key] = number(value);
+    return {
+        id: text(r.id),
+        fonds_id: text(r.fonds_id),
+        state: text(r.state),
+        created_at: text(r.created_at),
+        total:
+            r.total === undefined
+                ? Object.values(counts).reduce((a, b) => a + b, 0)
+                : number(r.total),
+        counts,
+        blocked_publications:
+            r.blocked_publications === undefined
+                ? 0
+                : number(r.blocked_publications),
+    };
+}
+function item(value: unknown): IntakeItem {
+    const r = object(value);
+    return {
+        id: text(r.id),
+        original_name: text(r.original_name),
+        code: r.code === null ? null : text(r.code),
+        state: text(r.state),
+        job_state: r.job_state === null ? null : text(r.job_state),
+        reason_text: text(r.reason_text),
+        size_bytes: r.size_bytes === null ? null : number(r.size_bytes),
+        pages: r.pages === null ? null : number(r.pages),
+    };
+}
+function intakeEvent(value: unknown): IntakeEvent {
+    const r = object(value);
+    return {
+        id: text(r.id),
+        item_id: r.item_id === null ? null : text(r.item_id),
+        actor_id: r.actor_id === null ? null : text(r.actor_id),
+        action: text(r.action),
+        reason: r.reason === null ? null : text(r.reason),
+        occurred_at: text(r.occurred_at),
+    };
+}
+
 /** Same-origin, verified HTTPS only. The browser keeps HttpOnly cookies; no token storage. */
 export class IdentityApi {
     constructor(private readonly unauthorized: () => void = () => {}) {}
@@ -123,6 +197,113 @@ export class IdentityApi {
         } catch {
             throw new ApiError(502);
         }
+    }
+    async fonds(signal?: AbortSignal): Promise<Fonds[]> {
+        return entries(
+            await this.request("/ingestion/fonds", "GET", undefined, signal),
+        ).map(fonds);
+    }
+    async createFonds(name: string, storage_key: string): Promise<Fonds> {
+        return fonds(
+            await this.request("/ingestion/fonds", "POST", {
+                name,
+                storage_key,
+            }),
+        );
+    }
+    async fondsMembers(id: string, signal?: AbortSignal): Promise<string[]> {
+        return entries(
+            await this.request(
+                `/ingestion/fonds/${encodeURIComponent(id)}/members`,
+                "GET",
+                undefined,
+                signal,
+            ),
+        ).map((value) => text(object(value).user_id));
+    }
+    async fondsGrant(
+        id: string,
+        userId: string,
+        enabled: boolean,
+        reason: string,
+    ): Promise<void> {
+        await this.request(
+            `/ingestion/fonds/${encodeURIComponent(id)}/members/${encodeURIComponent(userId)}`,
+            "PUT",
+            { enabled, reason },
+        );
+    }
+    async batches(
+        id: string,
+        offset = 0,
+        signal?: AbortSignal,
+    ): Promise<IntakeBatch[]> {
+        return entries(
+            await this.request(
+                `/ingestion/fonds/${encodeURIComponent(id)}/batches?limit=20&offset=${offset}`,
+                "GET",
+                undefined,
+                signal,
+            ),
+        ).map(batch);
+    }
+    async startBatch(fonds_id: string): Promise<IntakeBatch> {
+        return batch(
+            await this.request("/ingestion/batches", "POST", { fonds_id }),
+        );
+    }
+    async batch(id: string, signal?: AbortSignal): Promise<IntakeBatch> {
+        return batch(
+            await this.request(
+                `/ingestion/batches/${encodeURIComponent(id)}`,
+                "GET",
+                undefined,
+                signal,
+            ),
+        );
+    }
+    async batchCommand(
+        id: string,
+        command: string,
+        reason: string,
+    ): Promise<IntakeBatch> {
+        return batch(
+            await this.request(
+                `/ingestion/batches/${encodeURIComponent(id)}/${encodeURIComponent(command)}`,
+                "POST",
+                { reason },
+            ),
+        );
+    }
+    async intakeItems(
+        id: string,
+        offset = 0,
+        search = "",
+        state = "",
+        signal?: AbortSignal,
+    ): Promise<IntakeItem[]> {
+        return entries(
+            await this.request(
+                `/ingestion/batches/${encodeURIComponent(id)}/items?limit=20&offset=${offset}&search=${encodeURIComponent(search)}&state=${encodeURIComponent(state)}`,
+                "GET",
+                undefined,
+                signal,
+            ),
+        ).map(item);
+    }
+    async intakeEvents(
+        id: string,
+        offset = 0,
+        signal?: AbortSignal,
+    ): Promise<IntakeEvent[]> {
+        return entries(
+            await this.request(
+                `/ingestion/batches/${encodeURIComponent(id)}/events?limit=20&offset=${offset}`,
+                "GET",
+                undefined,
+                signal,
+            ),
+        ).map(intakeEvent);
     }
     async me(signal?: AbortSignal): Promise<User> {
         return user(await this.request("/auth/me", "GET", undefined, signal));

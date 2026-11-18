@@ -48,3 +48,38 @@ export const actionLabels: Record<string, string> = {
     "security.csrf": "Validación de solicitud",
     "security.validation": "Validación de datos",
 };
+
+export interface Fonds {
+    id: string;
+    name: string;
+    storage_key: string;
+    active: boolean;
+    incoming_path: string | null;
+}
+export interface IntakeBatch {
+    id: string;
+    fonds_id: string;
+    state: string;
+    created_at: string;
+    total: number;
+    counts: Record<string, number>;
+    blocked_publications: number;
+}
+export interface IntakeItem {
+    id: string;
+    original_name: string;
+    code: string | null;
+    state: string;
+    job_state: string | null;
+    reason_text: string;
+    size_bytes: number | null;
+    pages: number | null;
+}
+export interface IntakeEvent {
+    id: string;
+    item_id: string | null;
+    actor_id: string | null;
+    action: string;
+    reason: string | null;
+    occurred_at: string;
+}

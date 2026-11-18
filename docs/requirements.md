@@ -1,6 +1,6 @@
 # Requisitos y restricciones
 
-Actualizado: 2026-11-13. Fuente: instrucciones del responsable del proyecto.
+Actualizado: 2026-11-18. Fuente: instrucciones del responsable del proyecto.
 Este documento registra requisitos; no acredita funcionalidades implementadas.
 
 ## Acordado
@@ -78,13 +78,14 @@ alcance autorizado, por ejemplo por fondo, además del permiso de ejecutar una a
 | F002B — RabbitMQ local TLS | Broker real, permisos mínimos y cola sintética verificable en Windows; sin worker Celery. |
 | F003 — Usuarios y permisos | Cuentas locales, sesiones revocables, permisos y auditoría implementados y verificados con PostgreSQL TLS nativo Windows. |
 | F004A — Portal React | Portal React de acceso, cuentas, permisos y auditoría verificado en navegador por HTTPS con confianza autorizada para Usuario. |
-| F004 — Ingestión y operación | Carpeta de ingreso, interfaz mínima, códigos, hashes, estados y control de inicio/pausa/parada. |
+| F004B — Ingreso por carpetas (verificado) | [Alcance aprobado para UFM](features/F004B-ingestion-carpetas-proposal.md): carpeta por fondo, ingreso recuperable, estados e historial y publicación RabbitMQ. |
 | F005 — Extracción recuperable | Workers, texto por página, fallos, cola separada, reencolado e idempotencia comprobada. |
 | F006 — Metadatos configurables | Perfil de fondo, esquema y prompt versionados; propuestas validadas con evidencia. |
 | F007 — Resultados y operación | Completar consulta operativa y acciones auditadas sobre fallidos; sin aprobación humana obligatoria de los procesados correctamente. |
 | Final — Despliegue Linux | Docker/Compose, servicios PostgreSQL/RabbitMQ reales, workers Linux, cifrado de almacenamiento, integración, reinicios y evidencia de ejecución completa. |
 
-La base técnica, F002, F003 y la prueba F002B están aprobadas; el resto de features requiere su alcance.
+La base técnica y F002/F002B/F003/F004A/F004B están aprobadas; las entregas siguientes
+requieren su propio alcance.
 El dashboard y los reportes avanzados
 se planificarán después. Las funciones de seguridad, historial y recuperación
 acompañarán a las features que las necesitan; no serán un endurecimiento posterior.

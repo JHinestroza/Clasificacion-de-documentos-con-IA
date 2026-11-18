@@ -92,6 +92,8 @@ class Audit:
     reason: str | None = None
     subject_hash: str | None = field(default=None, repr=False)
 
+    fonds_id: UUID | None = None
+
     def public(self) -> dict[str, object]:
         return {
             "id": str(self.id),

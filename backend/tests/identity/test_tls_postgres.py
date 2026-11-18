@@ -29,9 +29,15 @@ def test_real_postgres_rejects_wrong_server_name(pg_environment: tuple) -> None:
 
 def test_real_postgres_certificate_requires_its_ca(pg_environment: tuple) -> None:
     settings, _, _ = pg_environment
-    context = ssl.create_default_context()
+    # CurrentUser may legitimately trust the authorized development CA.
+    # An isolated empty trust store makes this negative check independent of Windows.
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    assert context.verify_mode == ssl.CERT_REQUIRED and context.check_hostname
     with socket.create_connection((settings.db_host, settings.db_port), timeout=3) as sock:
         sock.sendall(struct.pack("!II", 8, 80877103))
         assert sock.recv(1) == b"S"
-        with pytest.raises(ssl.SSLCertVerificationError):
-            context.wrap_socket(sock, server_hostname=settings.db_host)
+        with (
+            pytest.raises(ssl.SSLCertVerificationError),
+            context.wrap_socket(sock, server_hostname=settings.db_host),
+        ):
+            pass

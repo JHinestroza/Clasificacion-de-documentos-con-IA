@@ -172,6 +172,28 @@ class IdentityService:
         repo.save_session(replace(session, last_seen_at=now))
         return user, session
 
+    def authorize(
+        self,
+        repo: Repository,
+        token: str,
+        *,
+        csrf: str | None = None,
+        mutation: bool = False,
+        permission: str | None = None,
+        admin: bool = False,
+    ) -> User:
+        """Authorize inside a caller-owned, security-locked transaction.
+
+        Resource modules check their scope and audit in that same unit of work.
+        This deliberately never opens a separate identity connection.
+        """
+        actor, _ = self._authenticated(repo, token, csrf, mutation)
+        if admin and not actor.is_superuser:
+            raise PermissionDenied("Permission denied")
+        if permission and not actor.is_superuser and permission not in actor.permissions:
+            raise PermissionDenied("Permission denied")
+        return actor
+
     def _run(
         self,
         token: str,
@@ -346,7 +368,9 @@ class IdentityService:
         return self._run(
             token,
             "audit.list",
-            lambda repo, user, session: repo.list_audit(limit, offset),
+            lambda repo, user, session: repo.list_audit(
+                limit, offset, None if user.is_superuser else user.id
+            ),
             permission="audit.read",
         )
 

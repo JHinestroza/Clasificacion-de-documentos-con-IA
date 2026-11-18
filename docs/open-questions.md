@@ -1,6 +1,6 @@
 # Preguntas y decisiones pendientes
 
-Actualizado: 2026-11-13. Cerrar cada decisión antes de implementar la feature afectada.
+Actualizado: 2026-11-18. Cerrar cada decisión antes de implementar la feature afectada.
 
 ## Decisiones cerradas
 
@@ -22,7 +22,8 @@ Actualizado: 2026-11-13. Cerrar cada decisión antes de implementar la feature a
 - Custodia, recuperación y renovación de claves y certificados institucionales.
   El bootstrap genera una CA de desarrollo sin instalar confianza. En F004A se
   autorizó y verificó su importación únicamente en Usuario CurrentUser\Root.
-- El alcance por fondo/reporte debe concretarse antes de exponer esos recursos.
+- El alcance por fondo está implementado en F004B; el de reportes deberá concretarse
+  cuando se expongan esos recursos.
   F003 ya implementa cuentas locales, sesiones revocables, permisos y auditoría.
   Recuperación de cuentas y políticas de retención necesitan diseño antes de ampliarlas.
 - Acceso solo local o desde otros equipos; API keys para clientes externos si se
@@ -30,11 +31,11 @@ Actualizado: 2026-11-13. Cerrar cada decisión antes de implementar la feature a
 
 ## Antes de ingestión, extracción y metadatos
 
-- Nombres de fondos a configurar y cantidad inicial de fondos; los ejemplos de
-  código y el límite de tamaño ya se registraron abajo.
-- Reglas de normalización del código y deduplicación por contenido SHA-256.
-- Páginas habituales/máximas, picos de carga y forma de completar la copia
-  de archivos en la carpeta de entrada.
+- El primer fondo es UFM; fondos adicionales se administran en el portal.
+- Resuelto en F004B: normalización ASCII/mayúsculas, código global único y SHA-256
+  como advertencia acotada; entregas completas .part → .pdf.
+- Medir páginas habituales/máximas y picos de carga antes de dimensionar producción.
+  Límites iniciales de validación aprobados: 5 000 páginas, 30 segundos y 512 MiB.
 - Controles por lote confirmados: finalizar la admisión iniciada al pausar/detener;
   conservar pendientes. El efecto sobre la futura ejecución del worker se diseñará en F005.
 - Política de reintentos, errores transitorios, documentos sin texto y fallos
@@ -70,3 +71,11 @@ Docker, los workers Linux y el despliegue completo siguen diferidos a la feature
 - Resuelto el 2026-11-13: el responsable autorizó la CA existente en Usuario
   CurrentUser\Root. Confianza y revisión visual del portal verificadas; no se pide
   esa aprobación otra vez. PKI institucional y nuevos equipos conservan sus pendientes.
+
+## F004B — ingreso por carpetas aprobado
+
+El responsable confirmó UFM y aprobó la [propuesta concreta](features/F004B-ingestion-carpetas-proposal.md)
+el 2026-11-13. Esquema/ámbito, reglas adicionales, validación/entrega completa y
+grants están autorizados; la rama `feature/ingestion-carpetas` entrega implementación y evidencia verificada
+antes de integrar en develop. Docker y extracción/metadatos conservan
+su alcance posterior. No volver a pedir esa aprobación.

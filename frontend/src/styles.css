@@ -1113,3 +1113,320 @@ fieldset {
         display: none;
     }
 }
+
+.intake-inbox,
+.intake-detail,
+.intake-batches {
+    padding: 28px;
+    margin-bottom: 24px;
+}
+.intake-fonds-choice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+.intake-fonds-choice label {
+    display: block;
+    margin-bottom: 8px;
+}
+.intake-fonds-choice select {
+    min-width: 240px;
+}
+.intake-limit {
+    font-size: 12px;
+    color: var(--muted);
+}
+.intake-path {
+    display: flex;
+    gap: 16px;
+    padding: 20px;
+    background: var(--soft);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin: 24px 0;
+}
+.intake-path code {
+    display: block;
+    overflow-wrap: anywhere;
+    padding: 10px 0;
+    font-size: 12px;
+}
+.intake-path p {
+    font-size: 13px;
+    margin: 0;
+    color: var(--muted);
+}
+.intake-controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+.intake-notice {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    padding: 0 8px 20px;
+    color: var(--muted);
+    font-size: 13px;
+}
+.intake-notice span {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+}
+.intake-batch-list {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+}
+.intake-batch-list li + li {
+    border-top: 1px solid var(--border);
+}
+.intake-batch-list button {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    padding: 16px 0;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    color: inherit;
+    cursor: pointer;
+}
+.intake-batch-list small {
+    display: block;
+    margin-top: 6px;
+    color: var(--muted);
+}
+.intake-counts {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin: 24px 0;
+}
+.intake-counts div {
+    background: var(--soft);
+    border-radius: 10px;
+    padding: 16px;
+    border: 1px solid var(--border);
+}
+.intake-counts strong {
+    display: block;
+    font-size: 26px;
+}
+.intake-counts span {
+    display: block;
+    font-size: 11px;
+    margin-top: 6px;
+    color: var(--muted);
+}
+.intake-status {
+    display: inline-flex;
+    padding: 6px 10px;
+    border-radius: 20px;
+    background: #f1f2ed;
+    font-size: 12px;
+    white-space: nowrap;
+}
+.intake-status.queued,
+.intake-status.completed {
+    background: #e7f1e9;
+    color: #2d5f45;
+}
+.intake-status.failed,
+.intake-status.stopped {
+    background: #f9ece7;
+    color: #8b4637;
+}
+.intake-status.pending_publish,
+.intake-status.paused {
+    background: #f6f0de;
+    color: #795f24;
+}
+.intake-filters {
+    display: flex;
+    gap: 16px;
+    margin: 24px 0;
+}
+.intake-filters > div {
+    flex: 1;
+}
+.intake-filters label {
+    display: block;
+    margin-bottom: 8px;
+}
+.intake-detail table td:first-child {
+    min-width: 170px;
+    overflow-wrap: anywhere;
+}
+.intake-detail table td:last-child {
+    min-width: 200px;
+    max-width: 350px;
+    font-size: 13px;
+}
+.intake-history {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+}
+.intake-history ol {
+    list-style: none;
+    padding: 0;
+}
+.intake-history li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    font-size: 13px;
+}
+.intake-history time {
+    color: var(--muted);
+    font-size: 12px;
+}
+@media (max-width: 900px) {
+    .intake-counts {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+@media (max-width: 600px) {
+    .intake-inbox,
+    .intake-detail,
+    .intake-batches {
+        padding: 20px;
+    }
+    .intake-fonds-choice,
+    .intake-notice,
+    .intake-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .intake-fonds-choice select {
+        min-width: 0;
+    }
+    .intake-counts {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .intake-history li {
+        flex-direction: column;
+    }
+    .intake-batch-list button {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+.intake-inbox,
+.intake-detail,
+.intake-batches {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+.intake-inbox .field-help,
+.intake-detail .field-help {
+    margin: 16px 0 0;
+}
+.section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.section-heading h2 {
+    font-size: 18px;
+    margin: 0;
+}
+.section-heading p {
+    margin: 8px 0 0;
+}
+.muted {
+    color: var(--muted);
+    font-size: 12px;
+}
+.intake-fonds-choice > div {
+    flex: 1;
+    min-width: 0;
+}
+.intake-form label:not(.checkbox-label) {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    margin: 18px 0 8px;
+}
+.intake-form input:not([type="checkbox"]),
+.intake-form select,
+.intake-form textarea,
+.intake-fonds-choice select,
+.intake-filters input,
+.intake-filters select {
+    width: 100%;
+    min-width: 0;
+    padding: 11px 12px;
+    border: 1px solid #d6dfd0;
+    border-radius: 6px;
+    background: #fff;
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+}
+.intake-form textarea {
+    min-height: 90px;
+    resize: vertical;
+}
+.intake-form .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    margin: 20px 0;
+}
+.intake-form .pagination,
+.intake-detail .pagination,
+.intake-batches .pagination {
+    padding: 15px 0;
+}
+.intake-detail .table-scroll {
+    width: 100%;
+    overflow-x: auto;
+    margin-top: 20px;
+}
+.intake-detail table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+.intake-detail th,
+.intake-detail td {
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+}
+.intake-detail th {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+}
+.intake-detail td strong {
+    font-size: 13px;
+    font-weight: 500;
+}
+.intake-detail td .muted {
+    margin-top: 6px;
+    font-size: 11px;
+}
+.intake-batches .empty-state {
+    text-align: center;
+    padding: 32px 10px;
+    font-size: 13px;
+    color: var(--muted);
+}
+.intake-batches .empty-state h3 {
+    color: var(--text);
+    font-size: 16px;
+}

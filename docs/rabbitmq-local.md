@@ -4,7 +4,9 @@
 
 RabbitMQ 4.4.0 se ejecuta como servicio Windows. Esta feature comprueba AMQP real
 por TLS con mensajes sintéticos; no ejecuta PDF, IA ni workers Celery. Docker sigue
-reservado para la feature final. PostgreSQL y F003 continúan pendientes.
+reservado para la feature final. PostgreSQL/F003 están implementados; F004B añade
+[ingreso por carpetas](ingestion-local.md) y publicación de trabajos PDF. Esta guía
+conserva el alcance del probe aislado de F002B.
 
 El listener de aplicación es `127.0.0.1:5671`, con certificado para `localhost` y
 `127.0.0.1`; AMQP sin TLS en 5672 queda desactivado. No se abre la consola web de
@@ -26,10 +28,10 @@ comprueba el usuario efectivo y se niega a crear activos bajo esas cuentas.
 - `%APPDATA%/RabbitMQ/rabbitmq.conf`: configuración instalada. Se rechaza sobrescribir
   una configuración previa sin el marcador de esta aplicación.
 
-No se crean cuentas de Windows. El usuario de RabbitMQ definido en `.env` carece
-de etiquetas administrativas y solo tiene permisos sobre `document_platform.integration`
-en su vhost de proyecto. Los recursos de procesamiento reales requerirán permisos
-propios cuando se implemente esa feature. Se conservan usuarios y datos anteriores
+No se crean cuentas de Windows. El usuario RabbitMQ de `.env` carece de etiquetas
+administrativas. El probe opera solo `document_platform.integration`. F004B amplía
+los permisos a entidades concretas de tareas/pruebas y prohíbe al productor consumir
+la cola operativa; consultar [la guía UFM](ingestion-local.md). Se conservan usuarios y datos anteriores
 del broker; no se purgan ni se borran colas existentes.
 
 ## Preparar e instalar
@@ -72,8 +74,8 @@ herramienta nunca consume colas documentales. Cada comando está limitado a 100
 mensajes y no hay bucle de consumo automático.
 
 El conteo mostrado es de mensajes listos para entrega, no de todo el historial.
-Todavía no hay persistencia PostgreSQL de estados, auditoría de usuario ni garantías
-de idempotencia del futuro procesamiento documental. El ACK elimina el mensaje
+El probe no representa la historia de documentos. F004B persiste estados y auditoría
+en PostgreSQL; la idempotencia del futuro consumidor documental sigue pendiente. El ACK elimina el mensaje
 confirmado de esta cola de prueba; no es una aprobación archivística.
 
 ## Pruebas de seguridad e integración
@@ -110,7 +112,7 @@ credenciales como directorio base de pruebas.
 - Falla de arranque tras instalar: revisar el log del servicio y la configuración
   marcada; no eliminar su directorio `db`. Restaurar configuración previa requiere
   identificar su respaldo y reiniciar. No existe comando de borrado automático.
-- `/ready` de la API puede seguir respondiendo 503 por ausencia de PostgreSQL aunque
+- `/ready` de la API puede seguir respondiendo 503 si PostgreSQL no está disponible aunque
   la comprobación independiente del broker sea correcta.
 
 ## Fuentes primarias

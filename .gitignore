@@ -44,3 +44,7 @@ backups/
 .DS_Store
 Thumbs.db
 node_modules/
+
+# The storage adapter is source code; operational storage remains ignored.
+!backend/src/document_platform/infrastructure/storage/
+!backend/src/document_platform/infrastructure/storage/*.py

@@ -103,7 +103,14 @@ def definitions(settings: Settings, existing: dict[str, Any] | None = None) -> d
             )
         result["users"][0]["password_hash"] = users[0]["password_hash"]
         if existing != result:
-            raise ValueError("Existing broker permissions differ; review the configuration")
+            from copy import deepcopy
+
+            from scripts.prepare_ingestion_rabbitmq import CONFIGURE, READ
+
+            expanded = deepcopy(result)
+            expanded["permissions"][0].update(configure=CONFIGURE, write=CONFIGURE, read=READ)
+            if existing != expanded:
+                raise ValueError("Existing broker permissions differ; review the configuration")
         return existing
     return result
 

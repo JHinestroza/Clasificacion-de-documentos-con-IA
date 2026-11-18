@@ -91,6 +91,23 @@ def no_cache(response: Response) -> None:
     response.headers["Cache-Control"] = "no-store"
 
 
+def session_token(request: Request) -> str:
+    return request.cookies.get(SESSION_COOKIE, "")
+
+
+def csrf_token(request: Request, service: IdentityService, settings: Settings) -> str:
+    supplied = request.headers.get("x-csrf-token", "")
+    cookie = request.cookies.get(CSRF_COOKIE, "")
+    if (
+        request.headers.get("origin") not in settings.auth_allowed_origins
+        or re.fullmatch(r"[A-Za-z0-9_-]{32,128}", cookie) is None
+        or not secrets.compare_digest(cookie.encode(), supplied.encode())
+    ):
+        invoke(lambda: service.audit_rejection("security.csrf"))
+        raise PermissionDenied("Request security validation failed")
+    return supplied
+
+
 def identity_router(service: IdentityService, settings: Settings) -> APIRouter:
     router = APIRouter(
         prefix="/api/v1",
@@ -116,16 +133,7 @@ def identity_router(service: IdentityService, settings: Settings) -> APIRouter:
         return request.cookies.get(SESSION_COOKIE, "")
 
     def csrf(request: Request) -> str:
-        supplied = request.headers.get("x-csrf-token", "")
-        cookie = request.cookies.get(CSRF_COOKIE, "")
-        if (
-            request.headers.get("origin") not in settings.auth_allowed_origins
-            or re.fullmatch(r"[A-Za-z0-9_-]{32,128}", cookie) is None
-            or not secrets.compare_digest(cookie.encode(), supplied.encode())
-        ):
-            invoke(lambda: service.audit_rejection("security.csrf"))
-            raise PermissionDenied("Request security validation failed")
-        return supplied
+        return csrf_token(request, service, settings)
 
     @router.get("/auth/csrf", response_model=CsrfView)
     def get_csrf(request: Request, response: Response) -> dict[str, str]:
